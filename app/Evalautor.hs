@@ -61,6 +61,23 @@ exec (Function name parameters body) envi =
                     let envi' = extend_envi envi (name, val)
                     return (envi', return ())
 
+exec (ClassDeclre _ constructers pos) envi = Right (new_envi,return())
+    where
+        new_envi :: Environment
+        new_envi = extend_envi' envi (attribute_functions ++ constructer_functions)
+            where
+                constructer_functions :: [(String, Value)]
+                constructer_functions = map (\(Constructer name parameters) -> (name, Function' name parameters body envi (length parameters))) constructers
+                    where
+                        body :: Expr
+                        body = Lambda ["attribute_name"] (Hack (Name pos "attribute_name"))
+
+                attribute_functions :: [(String, Value)]
+                attribute_functions = map (\parameter -> (parameter, Function' parameter ["object"] (Call pos (Name pos "object") [StringExpr parameter]) envi 1))  get_attr_names
+                    where
+                        get_attr_names :: [String]
+                        get_attr_names = concat (map (\(Constructer _ parameters) -> parameters) constructers)
+
 eval :: Expr -> Environment -> Either Error' Value
 eval (Ternary pos condition then_branch else_branch) envi = do
     condition' <- is_bool envi condition pos
@@ -242,7 +259,14 @@ eval (Match expr cases wild_card) envi = (eval expr envi) >>= (\ value -> (check
             (eval case_ envi) >>= (\ result -> if result == value
                 then eval branch envi
                 else check_cases value rest)
-                        
+
+eval (Hack expr) envi = case expr of
+    (Name pos name) -> do
+        name' <- eval (Name pos name) envi
+        result <- eval (Name pos ( get_str name')) envi
+        return result
+    _ -> Right (String' "This will never run.")
+
 is_bool :: Environment -> Expr -> SourcePos -> Either Error' Bool
 is_bool envi expr pos = case eval expr envi of
     Right (Boolean' b) -> Right b

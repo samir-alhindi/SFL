@@ -22,7 +22,24 @@ statement =
     <|> try if'
     <|> try block
     <|> try function
+    <|> try class'
     <?> "statement"
+
+class' :: Parser Stmt
+class' = do
+    m_reserved "data"
+    pos <- getPosition
+    name <- m_identifier
+    m_reservedOp "="
+    constructers <- constructer `sepBy1` (m_reservedOp "|")
+    _ <- m_semi
+    return (ClassDeclre name constructers pos)
+    where
+        constructer :: Parser Constructer
+        constructer = do
+            name <- m_identifier
+            parameters <- many m_identifier
+            return (Constructer name parameters)
 
 function :: Parser Stmt
 function = do
@@ -68,8 +85,8 @@ def :: LanguageDef ()
 def = emptyDef {
     opStart = oneOf "+-*/><=!:#%",
     opLetter = oneOf "<>=",
-    reservedOpNames = ["+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!=", "and", "or", "not", "=", "><", "\\", "->", "!", "#", ":", "%", "_"],
-    reservedNames  = ["true", "false", "and", "or", "not", "if", "then", "else", "let", "in", "match", "case", "with"]
+    reservedOpNames = ["+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!=", "and", "or", "not", "=", "><", "\\", "->", "!", "#", ":", "%", "_", "|"],
+    reservedNames  = ["true", "false", "and", "or", "not", "if", "then", "else", "let", "in", "match", "case", "with", "data"]
 }
 
 m_naturalOrFloat :: Parser (Either Integer Double)

@@ -1,1 +1,27 @@
-!list
+
+data Shape = Circle radius | Rectangle width height | Triangle base height;
+data Person = Person name age hobby;
+data Maybe = Maybe value | Nothing;
+
+my_circle = Circle 5;
+my_rect   = Rectangle 10 20;
+
+print radius my_circle;
+print width my_rect;
+print height my_rect;
+
+circle1 = Circle (-1);
+circle2 = Circle (-2);
+
+print radius circle1;
+print radius circle2;
+
+print circle1;
+
+samir = Person "Samir" 20 "Coding";
+print hobby samir;
+print age samir;
+
+maybe_int = Maybe 5;
+print value maybe_int;
+print None;

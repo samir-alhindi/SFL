@@ -9,7 +9,10 @@ data Stmt =
     | IfElse SourcePos Expr Stmt Stmt
     | Function String [String] Expr
     | Block [Stmt]
+    | ClassDeclre String [Constructer] SourcePos
     deriving Show
+
+data Constructer = Constructer String [String] deriving (Show, Eq)
 
 data Expr =
       Number Double
@@ -24,6 +27,7 @@ data Expr =
     | Call SourcePos Expr [Expr]
     | List [Expr]
     | Match Expr [(Expr,Expr)] Expr
+    | Hack Expr
     deriving (Show, Eq)
 
 

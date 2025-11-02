@@ -50,4 +50,8 @@ find envi name pos = case envi of
 
 extend_envi :: Environment -> (String, Value) -> Environment
 extend_envi (Global map')             pair = Global (pair : map')
-extend_envi (Environment map' outer)  pair = Environment (pair : map') outer 
+extend_envi (Environment map' outer)  pair = Environment (pair : map') outer
+
+extend_envi' :: Environment -> [(String, Value)] -> Environment
+extend_envi' (Global map') pairs = Global (pairs ++ map')
+extend_envi' (Environment map' outer)  pairs = Environment (pairs ++ map') outer

@@ -1,1 +1,1 @@
-print err
+Number (fromIntegral i)
