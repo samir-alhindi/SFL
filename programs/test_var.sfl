@@ -1,15 +1,15 @@
 
 
-let x = 5;
-let x = 7;
+x = 5;
+x = 7;
 
-let age = 20;
-let can_enter = if age >= 18 then "Yes" else "No";
+age = 20;
+can_enter = if age >= 18 then "Yes" else "No";
 
 print can_enter;
 
 print x + 1;
 
-let z = x*2;
+z = x*2;
 
 print z;

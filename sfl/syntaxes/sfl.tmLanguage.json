@@ -12,7 +12,7 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.control.sfl",
-				"match": "\\b(if|then|else|let|in|print)\\b"
+				"match": "\\b(if|then|else|let|in|print|match|with|case)\\b"
 			}]
 		},
 		"strings": {

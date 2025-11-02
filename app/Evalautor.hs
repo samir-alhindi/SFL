@@ -32,11 +32,6 @@ exec (IfElse pos condition then_branch else_branch) envi = do
         then exec then_branch envi
         else exec else_branch envi
 
-exec (LetBinding name init') envi = do
-    init'' <- eval init' envi
-    let envi' = extend_envi envi (name, init'')
-    return (envi', return ())
-
 exec (Block stmts) envi = do
     let envi' = Environment [] envi
     (_, io) <- exec_block stmts envi'
@@ -49,14 +44,22 @@ exec (Block stmts) envi = do
             (_, io')    <- exec_block rest envi'''
             Right (envi'', (io >> io'))
 
-exec (Function name parameters body) envi = 
-    Right (recEnv, return ())
-        where
-            recEnv :: Environment
-            recEnv = Environment [(name, func)] envi
+exec (Function name parameters body) envi =
+    if length parameters == 0
+        then no_arg_func 
+        else Right (recEnv, return ())
+            where
+                recEnv :: Environment
+                recEnv = Environment [(name, func)] envi
 
-            func   :: Value
-            func   = Function' name parameters body recEnv (length parameters)
+                func   :: Value
+                func   = Function' name parameters body recEnv (length parameters)
+            
+                no_arg_func :: Either Error' (Environment, IO())
+                no_arg_func = do
+                    val <- eval body envi
+                    let envi' = extend_envi envi (name, val)
+                    return (envi', return ())
 
 eval :: Expr -> Environment -> Either Error' Value
 eval (Ternary pos condition then_branch else_branch) envi = do
@@ -231,6 +234,15 @@ eval (List elements) envi = do
     elements' <- sequence (map (`eval` envi) elements)
     return (List' elements')
 
+eval (Match expr cases wild_card) envi = (eval expr envi) >>= (\ value -> (check_cases value cases))
+    where
+        check_cases :: Value -> [(Expr, Expr)] -> Either Error' Value
+        check_cases _ [] = eval wild_card envi
+        check_cases value ((case_, branch):rest) =
+            (eval case_ envi) >>= (\ result -> if result == value
+                then eval branch envi
+                else check_cases value rest)
+                        
 is_bool :: Environment -> Expr -> SourcePos -> Either Error' Bool
 is_bool envi expr pos = case eval expr envi of
     Right (Boolean' b) -> Right b

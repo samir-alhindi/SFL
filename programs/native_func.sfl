@@ -1,4 +1,4 @@
 
 
-let word = "samir";
+word = "samir";
 print (to_upper word);

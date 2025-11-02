@@ -1,0 +1,7 @@
+
+
+print match "Samir" with
+    case "Rayyan" -> -1
+    case "Maria" -> 0
+    case "Samir" -> 1
+    _ -> 100;

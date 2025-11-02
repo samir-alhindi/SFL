@@ -1,5 +1,5 @@
 
-let x = 3;
+x = 3;
 
 if x >= 5 then {
     print "this ran";
@@ -12,7 +12,7 @@ else {
 }
 
 {
-    let x = "hello";
+    x = "hello";
     {
         print x;
     }

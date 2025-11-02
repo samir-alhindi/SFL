@@ -1,12 +1,12 @@
 
-let add = \ x y -> x + y;
+add = \ x y -> x + y;
 print (add 5 10);
 
-let sqr = \ n -> n * n;
+sqr = \ n -> n * n;
 print (sqr 4);
 
-let product = \ x -> \ y -> x * y;
-let double = product 2;
+product = \ x -> \ y -> x * y;
+double = product 2;
 print double 4;
 
 print ((\ x -> x + 1) 1);
@@ -14,19 +14,19 @@ print ((product 4) 5);
 
 print ((product 4) 5) + sqr 4;
 
-let greet = \ name -> "Hello: " + name;
+greet = \ name -> "Hello: " + name;
 print greet "Samir";
 print greet "Rayyan";
 
-let add_five = add >< 5;
+add_five = add >< 5;
 print add_five 6;
 
-let product = \ n1 n2 -> n1 * n2;
-let triple = product >< 3;
+product = \ n1 n2 -> n1 * n2;
+triple = product >< 3;
 print triple 10;
 
-let sum5 = \ n1 n2 n3 n4 n5 -> n1 + n2 + n3 + n4 + n5;
-let result = sum5 >< 1 >< 2 >< 3 >< 4;
+sum5 = \ n1 n2 n3 n4 n5 -> n1 + n2 + n3 + n4 + n5;
+result = sum5 >< 1 >< 2 >< 3 >< 4;
 print result 5;
 
 print add_five >< (-1);

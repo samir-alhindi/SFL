@@ -24,8 +24,8 @@ fold func init list = if is_empty list
     then init
     else func (!list) (fold func init (#list));
 
-let sum     = fold >< (\x y -> x + y) >< 0; 
-let product = fold >< (\x y -> x * y) >< 1;
+sum     = fold >< (\x y -> x + y) >< 0; 
+product = fold >< (\x y -> x * y) >< 1;
 
 all list p = if is_empty list
     then true
@@ -35,7 +35,7 @@ some list p = if is_empty list
     then false
     else p (!list) or some (#list) p;
 
-let numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 print map    (\n -> n * n)      numbers;
 print filter (\n -> n % 2 == 0) numbers;
@@ -43,3 +43,6 @@ print sum                       numbers;
 print product                   numbers;
 print all numbers  (\n -> n > 0);
 print some numbers (\n -> n % 2 == 0);
+print len [];
+print len [1];
+print len numbers;

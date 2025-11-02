@@ -7,7 +7,6 @@ data Stmt =
       Print Expr
     | If SourcePos Expr Stmt
     | IfElse SourcePos Expr Stmt Stmt
-    | LetBinding String Expr
     | Function String [String] Expr
     | Block [Stmt]
     deriving Show
@@ -24,6 +23,7 @@ data Expr =
     | Lambda [String] Expr
     | Call SourcePos Expr [Expr]
     | List [Expr]
+    | Match Expr [(Expr,Expr)] Expr
     deriving (Show, Eq)
 
 

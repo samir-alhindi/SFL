@@ -1,17 +1,17 @@
 
 
-let numbers = [1, 2, 3, 4, 5];
-let empty = [];
-let one = [1];
-let mixed = ["Samir", true, -12.543];
-let expresions = [
+numbers = [1, 2, 3, 4, 5];
+empty = [];
+one = [1];
+mixed = ["Samir", true, -12.543];
+expresions = [
     1 + 1 * 2,
     "Hello " + "world",
     true and false,
     (\n -> n * 2) 5
 ];
 
-let matrix = [
+matrix = [
     [1, 2, 3],
     [4, 5, 6],
     [7, 8, 9]

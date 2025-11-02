@@ -20,7 +20,6 @@ statement =
     try print'
     <|> try if_else
     <|> try if'
-    <|> try let_binding
     <|> try block
     <|> try function
     <?> "statement"
@@ -28,7 +27,7 @@ statement =
 function :: Parser Stmt
 function = do
     name <- m_identifier
-    parameters <- many1 m_identifier
+    parameters <- many m_identifier
     m_reservedOp "="
     body <- expression
     _ <- m_semi
@@ -36,16 +35,6 @@ function = do
 
 block :: Parser Stmt
 block = Block <$> (m_braces statement_sequence)
-
-let_binding :: Parser Stmt
-let_binding = do
-    m_reserved "let"
-    name <- m_identifier
-    m_reservedOp "="
-    initialization <- expression
-    _ <- m_semi
-    return (LetBinding name initialization)
-
 
 print' :: Parser Stmt
 print' = do
@@ -79,8 +68,8 @@ def :: LanguageDef ()
 def = emptyDef {
     opStart = oneOf "+-*/><=!:#%",
     opLetter = oneOf "<>=",
-    reservedOpNames = ["+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!=", "and", "or", "not", "=", "><", "\\", "->", "!", "#", ":", "%"],
-    reservedNames  = ["true", "false", "and", "or", "not", "if", "then", "else", "let", "in"]
+    reservedOpNames = ["+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!=", "and", "or", "not", "=", "><", "\\", "->", "!", "#", ":", "%", "_"],
+    reservedNames  = ["true", "false", "and", "or", "not", "if", "then", "else", "let", "in", "match", "case", "with"]
 }
 
 m_naturalOrFloat :: Parser (Either Integer Double)
@@ -123,6 +112,7 @@ atom = m_parens expression
     <|> try boolean
     <|> try identifier'
     <|> try lambda
+    <|> match
     <|> try let_expr
 
 table :: [[Operator String () Identity Expr]]
@@ -226,6 +216,25 @@ list = do
         
         empty_list :: Parser [Expr]
         empty_list = return []
+
+match :: Parser Expr
+match = do
+    m_reserved "match"
+    expr <- expression
+    m_reserved "with"
+    cases <- many1 case_
+    m_reservedOp "_"
+    m_reservedOp "->"
+    wild_card <- expression
+    return (Match expr cases wild_card)
+    where
+        case_ :: Parser (Expr, Expr)
+        case_ = do
+            m_reserved "case"
+            case_ <- expression
+            m_reservedOp "->"
+            result <- expression
+            return (case_, result)
 
 my_parse :: String -> Either ParseError [Stmt]
 my_parse source = parse (m_whiteSpace >> program) "" source
