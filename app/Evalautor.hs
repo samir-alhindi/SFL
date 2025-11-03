@@ -67,10 +67,13 @@ exec (ClassDeclre _ constructers pos) envi = Right (new_envi,return())
         new_envi = extend_envi' envi (attribute_functions ++ constructer_functions)
             where
                 constructer_functions :: [(String, Value)]
-                constructer_functions = map (\(Constructer name parameters) -> (name, Function' name parameters (body name) envi (length parameters))) constructers
+                constructer_functions = map (\(Constructer name parameters) -> (name, Function' name parameters (body name) rec_env (length parameters))) constructers
                     where
                         body :: String -> Expr
                         body name = Lambda [name] (Hack (Name pos name))
+
+                        rec_env :: Environment
+                        rec_env = Environment constructer_functions envi
 
                 attribute_functions :: [(String, Value)]
                 attribute_functions = map (\parameter -> (parameter, Function' parameter ["object"] (Call pos (Name pos "object") [StringExpr parameter]) envi 1))  get_attr_names
@@ -257,20 +260,28 @@ eval (Match pos expr cases wild_card) envi = (eval expr envi) >>= (\ value -> (c
         check_cases _ [] = eval wild_card envi
         check_cases value ((case_, branch):rest) =
             case case_ of
-                (Destructer name attributes) -> case value of
-                    (Lambda' (x:_) _ _ _) -> if x == name
-                        then eval branch (new_envi attributes)
+                (Destructer name destructer_names) -> case value of
+                    (Lambda' (x:_) _ closure _) -> if x == name
+                        then (branch_envi destructer_names name closure) >>= (\envi' -> eval branch envi')
                         else check_cases value rest
                     _                      -> check_cases value rest
-                _                            -> (eval case_ envi) >>= (\result -> if result ==  value then eval branch envi else check_cases value rest)
+                _                            -> (eval case_ envi) >>= (\result -> if result ==  value
+                                                                                    then eval branch envi
+                                                                                    else check_cases value rest)
 
             where
-                new_envi :: [String] -> Environment
-                new_envi attributes =
-                    let values  = map (\name -> eval (Call pos expr [StringExpr name]) envi) attributes in
-                    case sequence values of
-                        Left _ -> envi
-                        Right values' -> extend_envi' envi (zip attributes values')
+                branch_envi :: [String] -> String -> Environment -> Either Error' Environment
+                branch_envi destructer_attributes constructer_name closure = do
+                    attributes <- og_attributes
+                    values <- sequence (map (\name -> eval (Call pos expr [StringExpr name]) envi) attributes)
+                    return (extend_envi' envi (zip destructer_attributes values))
+                        where
+                            og_attributes :: Either Error' [String]
+                            og_attributes =
+                                case find closure constructer_name pos of
+                                    Left err            -> Left err
+                                    Right (Function' _ attributes _ _ _) -> Right attributes
+
 
 eval (Hack expr) envi = case expr of
     (Name pos name) -> do

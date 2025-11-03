@@ -7,11 +7,11 @@ data Shape =
     | Sqaure length;
 
 area shape = match shape with
-    case Circle radius          -> radius * radius * 3.14
-    case Rectangle width height -> width * height
-    case Triangle base height   -> 0.5 * base * height
-    case Sqaure length          -> length * length
-    else                        -> -1;
+    case Circle r          -> r * r * 3.14
+    case Rectangle w h     -> w * h 
+    case Triangle b h      -> 0.5 * b * h
+    case Sqaure l          -> l * l
+    else                   -> -1;
 
 my_circle = Circle 5;
 print area my_circle;
@@ -21,3 +21,5 @@ print area my_rect;
 
 my_tri = Triangle 10 5;
 print area my_tri;
+
+print area 5;

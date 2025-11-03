@@ -4,16 +4,16 @@ print match "Samir" with
     case "Rayyan" -> -1
     case "Maria" -> 0
     case "Samir" -> 1
-    _ -> 100;
+    else -> 100;
 
 print match false with
     case true -> false
-    _ -> "test";
+    else -> "test";
 
 print match [] with
     case [] -> [1]
-    _ -> "test2";
+    else -> "test2";
 
 print match [1, 2, 3] with
     case [1, 2, 3] -> []
-    _ -> "test3";
+    else -> "test3";
