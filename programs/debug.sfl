@@ -1,6 +1,23 @@
 
 
-is_empty list = if list == [] then true else false;
+data Shape =
+      Circle radius
+    | Rectangle width height
+    | Triangle base height
+    | Sqaure length;
 
-map func list = if is_empty list then [] else
-((func (!list)) : (map func (#list)));
+area shape = match shape with
+    case Circle radius          -> radius * radius * 3.14
+    case Rectangle width height -> width * height
+    case Triangle base height   -> 0.5 * base * height
+    case Sqaure length          -> length * length
+    else                        -> -1;
+
+my_circle = Circle 5;
+print area my_circle;
+
+my_rect = Rectangle 5 4;
+print area my_rect;
+
+my_tri = Triangle 10 5;
+print area my_tri;

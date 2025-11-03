@@ -85,7 +85,7 @@ def :: LanguageDef ()
 def = emptyDef {
     opStart = oneOf "+-*/><=!:#%",
     opLetter = oneOf "<>=",
-    reservedOpNames = ["+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!=", "and", "or", "not", "=", "><", "\\", "->", "!", "#", ":", "%", "_", "|"],
+    reservedOpNames = ["+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!=", "and", "or", "not", "=", "><", "\\", "->", "!", "#", ":", "%", "|"],
     reservedNames  = ["true", "false", "and", "or", "not", "if", "then", "else", "let", "in", "match", "case", "with", "data"]
 }
 
@@ -129,7 +129,7 @@ atom = m_parens expression
     <|> try boolean
     <|> try identifier'
     <|> try lambda
-    <|> match
+    <|> try match
     <|> try let_expr
 
 table :: [[Operator String () Identity Expr]]
@@ -237,21 +237,30 @@ list = do
 match :: Parser Expr
 match = do
     m_reserved "match"
+    pos <- getPosition
     expr <- expression
     m_reserved "with"
     cases <- many1 case_
-    m_reservedOp "_"
+    m_reserved "else"
     m_reservedOp "->"
     wild_card <- expression
-    return (Match expr cases wild_card)
+    return (Match pos expr cases wild_card)
     where
         case_ :: Parser (Expr, Expr)
         case_ = do
             m_reserved "case"
-            case_ <- expression
+            case_ <- (try destructer <|> expression)
             m_reservedOp "->"
             result <- expression
             return (case_, result)
+            where
+                destructer :: Parser Expr
+                destructer = do
+                    constructer_name <- m_identifier
+                    attributes <- many m_identifier
+                    return (Destructer constructer_name attributes)
+
+
 
 my_parse :: String -> Either ParseError [Stmt]
 my_parse source = parse (m_whiteSpace >> program) "" source
