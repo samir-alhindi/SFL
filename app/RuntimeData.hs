@@ -14,11 +14,12 @@ data Value =
     | List' [Value]
     deriving (Eq)
 
-data Error' = Error' String SourcePos
+data Error' = Error' String SourcePos | Error'' String
 
 instance Show Error' where
     show (Error' err_log pos) =
         printf "Error at position (%d,%d): %s" (sourceLine pos) (sourceColumn pos) err_log
+    show (Error'' err_log) = err_log
 
 instance Show Value where
     show (Number' n) = if ".0" `isSuffixOf` (show n) then show (floor n :: Integer) else show n

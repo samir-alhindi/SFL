@@ -258,22 +258,15 @@ eval (Match pos expr cases wild_card) envi = (eval expr envi) >>= (\ value -> (c
     where
         check_cases :: Value -> [(Expr, Expr)] -> Either Error' Value
         check_cases _ [] = eval wild_card envi
-        check_cases value ((case_, branch):rest) =
-            case case_ of
-                (Destructer name destructer_names) -> case value of
-                    (Lambda' (x:_) _ closure _) -> if x == name
-                        then (branch_envi destructer_names name closure) >>= (\envi' -> eval branch envi')
-                        else check_cases value rest
-                    _                      -> check_cases value rest
-                _                            -> (eval case_ envi) >>= (\result -> if result ==  value
-                                                                                    then eval branch envi
-                                                                                    else check_cases value rest)
-
+        check_cases value@(Lambda' (x:_) _ closure _) ((Destructer constructer_name destructer_attributes, branch):rest) =
+            if x == constructer_name
+                then branch_envi >>= (\envi' -> eval branch envi')
+                else check_cases value rest
             where
-                branch_envi :: [String] -> String -> Environment -> Either Error' Environment
-                branch_envi destructer_attributes constructer_name closure = do
+                branch_envi :: Either Error' Environment
+                branch_envi = do
                     attributes <- og_attributes
-                    values <- sequence (map (\name -> eval (Call pos expr [StringExpr name]) envi) attributes)
+                    values <- sequence (map (\attr -> eval (Call pos expr [StringExpr attr]) envi) attributes)
                     return (extend_envi' envi (zip destructer_attributes values))
                         where
                             og_attributes :: Either Error' [String]
@@ -281,6 +274,18 @@ eval (Match pos expr cases wild_card) envi = (eval expr envi) >>= (\ value -> (c
                                 case find closure constructer_name pos of
                                     Left err            -> Left err
                                     Right (Function' _ attributes _ _ _) -> Right attributes
+                                    _ -> Left (Error'' "This shouldn't run, It'll always find the constructer in the lambda's own closure.")
+
+        -- Destructers should never be evalauted:                             
+        check_cases value ((Destructer _ _, _) : rest) = check_cases value rest
+
+        check_cases value ((case', branch) : rest) = do
+            result <- eval case' envi
+            if result == value
+                then eval branch envi
+                else check_cases value rest
+
+eval (Destructer _ _) _ = Left (Error'' "Destructers shouldn't be evalauted like that.")
 
 
 eval (Hack expr) envi = case expr of
