@@ -5,6 +5,12 @@ len list = if is_empty list
     then 0
     else 1 + len (#list);
 
+last list = match list with
+    case [] -> "Error !"
+    else    -> if len list == 1
+                then !list
+                else last (#list);
+
 map func list = if is_empty list
     then []
     else func (!list) : map func (#list);
@@ -35,6 +41,50 @@ some list p = if is_empty list
     then false
     else p (!list) or some (#list) p;
 
+reverse list = match list with
+    case []   -> []
+    else -> (reverse (#list)) ++ [!list];
+
+contains list elem = match list with
+    case []   -> false
+    else      -> match !list with
+                    case elem -> true
+                    else -> contains (#list) elem;
+
+take n list = match n with
+    case 0 -> []
+    else   -> match list with
+                case [] -> []
+                else    -> (!list) : (take (n-1) (#list));
+
+init list = take ((len list)- 1) list;
+
+take_last n list = match n with
+    case 0 -> []
+    else   -> match list with
+                case [] -> []
+                else    -> (take_last (n-1) (init list))  ++ [last list];
+
+drop n list = match n with
+    case 0 -> list
+    else   -> match list with
+                case [] -> []
+                else    -> drop (n-1) (#list);
+
+split list at = [take at list, take_last at list];
+
+zip l1 l2 = if is_empty l1 or is_empty l2
+                then []
+                else [!l1, !l2] : (zip (#l1) (#l2));
+
+concat list = if is_empty list
+                then []
+                else (!list) ++ (concat (#list));
+
+replicate n elem = if n <= 0
+                    then []
+                    else elem : (replicate (n-1) elem);
+
 numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 print map    (\n -> n * n)      numbers;
@@ -46,3 +96,19 @@ print some numbers (\n -> n % 2 == 0);
 print len [];
 print len [1];
 print len numbers;
+print reverse numbers;
+print contains numbers 5;
+print contains numbers 0;
+print take 5 numbers;
+print take_last 5 numbers;
+print split numbers 5;
+print drop 3 numbers;
+
+names = ["Samir", "Rayyan", "Maria"];
+print zip numbers names;
+print zip names numbers;
+
+matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+print concat matrix;
+
+print replicate 5 "Samir is cool :D";

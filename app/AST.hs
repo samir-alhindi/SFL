@@ -36,7 +36,7 @@ data BinOpp = Plus | Minus | Multiply | Divide | Mod
   | And | Or
   | Greater | Less | GreaterEqual | LessEqual | DoubleEquals | NotEquals
   | Bind
-  | Cons
+  | Cons | Concat
   deriving (Show, Eq)
 
 data UnaryOpp = Negation | Not | Head | Tail deriving (Show, Eq)

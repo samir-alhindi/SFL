@@ -1,0 +1,7 @@
+
+
+elem = 1;
+
+print match ![1] with
+    case elem -> "sf"
+    else   -> "ff";

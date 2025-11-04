@@ -2,6 +2,8 @@
 	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
 	"name": "sfl",
 	"patterns": [
+		{"include": "#line_comments"},
+		{"include": "#multi_line_comments"},
 		{"include": "#keywords"},
 		{"include": "#strings"},
 		{"include": "#opperators"},
@@ -42,7 +44,16 @@
 		"identifiers":{
 			"name": "support.variable",
 			"match": "\\b(\\w+)\\b"
+		},
+		"line_comments": {
+			"name": "comment.line",
+			"match": "--(.+)\\n"
+		},
+		"multi_line_comments" : {
+			"name": "comment.block",
+			"match": "{-(.|\n|\\s)*-}"
 		}
+		
 	},
 	"scopeName": "source.sfl"
 }

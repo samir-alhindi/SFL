@@ -17,3 +17,7 @@ print match [] with
 print match [1, 2, 3] with
     case [1, 2, 3] -> []
     else -> "test3";
+
+print match ![1] with
+    case 1 -> "it works"
+    else -> "There's a bug";

@@ -84,9 +84,12 @@ if' = do
 def :: LanguageDef ()
 def = emptyDef {
     opStart = oneOf "+-*/><=!:#%",
-    opLetter = oneOf "<>=",
-    reservedOpNames = ["+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!=", "and", "or", "not", "=", "><", "\\", "->", "!", "#", ":", "%", "|"],
-    reservedNames  = ["true", "false", "and", "or", "not", "if", "then", "else", "let", "in", "match", "case", "with", "data"]
+    opLetter = oneOf "<>=+",
+    reservedOpNames = ["+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!=", "and", "or", "not", "=", "><", "\\", "->", "!", "#", ":", "%", "|", "++"],
+    reservedNames  = ["true", "false", "and", "or", "not", "if", "then", "else", "let", "in", "match", "case", "with", "data"],
+    commentLine = "--",
+    commentStart = "{-",
+    commentEnd = "-}"
 }
 
 m_naturalOrFloat :: Parser (Either Integer Double)
@@ -154,7 +157,8 @@ table = [
     [Infix (m_reservedOp "=="   >> getPosition >>= \ pos -> return (Binary pos DoubleEquals)) AssocLeft,
      Infix (m_reservedOp "!="   >> getPosition >>= \ pos -> return (Binary pos NotEquals))   AssocLeft],
 
-    [Infix (m_reservedOp ":"    >> getPosition >>= \ pos -> return (Binary pos Cons)) AssocLeft],
+    [Infix (m_reservedOp ":"    >> getPosition >>= \ pos -> return (Binary pos Cons)) AssocLeft,
+     Infix (m_reservedOp "++"   >> getPosition >>= \ pos -> return (Binary pos Concat)) AssocLeft],
 
     [Prefix (m_reservedOp "not" >> getPosition >>= \ pos -> return (Unary pos Not))                              ],
     [Infix  (m_reservedOp "and" >> getPosition >>= \ pos -> return (Binary pos And)) AssocLeft                    ],
@@ -249,15 +253,15 @@ match = do
         case_ :: Parser (Expr, Expr)
         case_ = do
             m_reserved "case"
-            case_ <- (try destructer <|> expression)
+            case__ <- (try destructer <|> expression)
             m_reservedOp "->"
             result <- expression
-            return (case_, result)
+            return (case__, result)
             where
                 destructer :: Parser Expr
                 destructer = do
                     constructer_name <- m_identifier
-                    attributes <- many m_identifier
+                    attributes <- many1 m_identifier
                     return (Destructer constructer_name attributes)
 
 

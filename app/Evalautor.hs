@@ -97,6 +97,7 @@ eval (Binary pos opp e1 e2) envi
     | opp == Plus                          = plus
     | opp == Bind                          = bind
     | opp == Cons                          = cons
+    | opp == Concat                        = concatenate
     | otherwise                            = relational
     where
         binary_number :: Either Error' Value
@@ -174,6 +175,14 @@ eval (Binary pos opp e1 e2) envi
             case tails of
                 (List' elements) -> Right (List' (head' : elements))
                 _                -> Left  (Error' ("second ':' opperand must be a list and not of type " ++ type_of tails) pos)
+
+        concatenate :: Either Error' Value
+        concatenate = do
+            l1 <- eval e1 envi
+            l2 <- eval e2 envi
+            case (l1, l2) of
+                (List' v1, List' v2) -> return (List' (v1 ++ v2))
+                _                    -> Left (Error' ("'++' opperands must be lists and not of type "++(type_of l1)++" and "++(type_of l2)) pos)
 
 
         check_number_opperands :: Either Error' (Double, Double)
