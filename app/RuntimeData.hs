@@ -12,7 +12,15 @@ data Value =
     | Lambda' [String] Expr Environment Int
     | Function' String [String] Expr Environment Int
     | List' [Value]
-    deriving (Eq)
+
+instance Eq Value where
+    (Number' n1)  == (Number' n2) = n1 == n2
+    (Boolean' b1) == (Boolean' b2) = b1 == b2
+    (String' s1)  == (String' s2) = s1 == s2
+    (Lambda' _ _ _ _)  == (Lambda' _ _ _ _) = False
+    (Function' name1 _ _ _ _) == (Function' name2 _ _ _ _) = name1 == name2
+    (List' l1) == (List' l2) = l1 == l2
+    _ == _ = False
 
 data Error' = Error' String SourcePos | Error'' String
 

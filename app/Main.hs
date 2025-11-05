@@ -8,7 +8,7 @@ run :: IO ()
 run = do
     args <- getArgs
     if length args == 0
-        then helper "C:\\Users\\Samir\\Desktop\\code\\haskell\\sfl_interpreter\\programs\\debug2.sfl"
+        then helper "C:\\Users\\Samir\\Desktop\\code\\haskell\\sfl_interpreter\\programs\\enums.sfl"
         else helper (args !! 0)
 
     where

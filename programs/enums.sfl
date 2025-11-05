@@ -1,0 +1,12 @@
+
+data Weekday = Sunday | Friday | Monday;
+
+today = Friday;
+
+show_day day = match day with
+    case Sunday -> "Sunday"
+    case Friday -> "Friday"
+    case Monday -> "Monday"
+    else        -> "Please enter a valid Weekday";
+
+print "Today is: " + (show_day today);
