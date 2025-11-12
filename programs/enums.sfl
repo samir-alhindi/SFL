@@ -1,5 +1,5 @@
 
-data Weekday = Sunday | Friday | Monday;
+enum Weekday = Sunday | Friday | Monday;
 
 today = Friday;
 
@@ -10,3 +10,7 @@ show_day day = match day with
     else        -> "Please enter a valid Weekday";
 
 print "Today is: " + (show_day today);
+
+print today;
+print Sunday;
+print Monday;

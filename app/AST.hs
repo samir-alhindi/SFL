@@ -3,7 +3,11 @@ module AST where
 
 import Text.Parsec
 
-data TopLevel = TL_Stmt Stmt | TL_Function Function | TL_Class Class
+data TopLevel =
+    TL_Stmt Stmt
+  | TL_Function Function
+  | TL_Class Class 
+  | TL_Enumeration Enumeration
 
 data Stmt =
       Print Expr
@@ -16,6 +20,8 @@ data Class = Class String [Constructer] SourcePos
 data Constructer = Constructer String [String] deriving (Show, Eq)
 
 data Function = Function String [String] Expr
+
+data Enumeration = Enumeration String [String] SourcePos
 
 data Expr =
       Number Double

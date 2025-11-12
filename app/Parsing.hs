@@ -16,7 +16,11 @@ top_level_sequence :: Parser [TopLevel]
 top_level_sequence = many1 top_level
 
 top_level :: Parser TopLevel
-top_level = (TL_Stmt <$> statement) <|> (TL_Function <$> function) <|> (TL_Class <$> class')
+top_level =
+    try (TL_Stmt <$> statement) <|>
+    try (TL_Function <$> function) <|>
+    try (TL_Class <$> class') <|>
+    try (TL_Enumeration <$> enum)
     
 statement :: Parser Stmt
 statement =
@@ -50,6 +54,16 @@ function = do
     body <- expression
     _ <- m_semi
     return (Function name parameters body)
+
+enum :: Parser Enumeration
+enum = do
+    m_reserved "enum"
+    name <- m_identifier
+    pos <- getPosition
+    m_reservedOp "="
+    enumerations <- m_identifier `sepBy1` (m_reservedOp "|")
+    _ <- m_semi
+    return (Enumeration name enumerations pos)
 
 block :: Parser Stmt
 block = Block <$> (m_braces (many statement))
@@ -87,7 +101,7 @@ def = emptyDef {
     opStart = oneOf "+-*/><=!:#%",
     opLetter = oneOf "<>=+",
     reservedOpNames = ["+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!=", "and", "or", "not", "=", "><", "\\", "->", "!", "#", ":", "%", "|", "++", ">>="],
-    reservedNames  = ["true", "false", "and", "or", "not", "if", "then", "else", "let", "in", "match", "case", "with", "data"],
+    reservedNames  = ["true", "false", "and", "or", "not", "if", "then", "else", "let", "in", "match", "case", "with", "data", "enum"],
     commentLine = "--",
     commentStart = "{-",
     commentEnd = "-}"

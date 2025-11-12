@@ -36,8 +36,8 @@ data Expre =
     | Lambda parameters body closure -- \ x y -> x + y
     | Apply lambda args;
 
-data BinaryOpp = Plus | Minus | Multiply | Divide;
-data UnaryOpp  = Negation;
+enum BinaryOpp = Plus | Minus | Multiply | Divide;
+enum UnaryOpp  = Negation;
 
 data Environment = Environment table outer | Global table;
 

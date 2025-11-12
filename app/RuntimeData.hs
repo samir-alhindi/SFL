@@ -80,7 +80,7 @@ extend_envi' (Global map') pairs = Global (pairs ++ map')
 extend_envi' (Environment map' outer)  pairs = Environment (pairs ++ map') outer
 
 global :: [TopLevel] -> Environment
-global top_level = Global (constructers_and_atributes_map ++ functions_map)
+global top_level = Global (constructers_and_atributes_map ++ functions_map ++ enum_map)
     where
         functions_map :: Map
         functions_map = map (\(name, f) -> (name, f closure)) (almost_functions)
@@ -97,7 +97,7 @@ global top_level = Global (constructers_and_atributes_map ++ functions_map)
                         partial_eval (Function name parameter body) = (name, Function' name parameter body)
                 
                 closure :: Environment
-                closure = Environment (functions_map) (Global constructers_and_atributes_map)
+                closure = Environment (functions_map) (Global (constructers_and_atributes_map ++ enum_map))
 
         constructers_and_atributes_map :: Map
         constructers_and_atributes_map = attribute_functions ++ constructer_functions
@@ -124,3 +124,11 @@ global top_level = Global (constructers_and_atributes_map ++ functions_map)
                 helper [] = []
                 helper (TL_Class (Class _ constructers' _) : rest) = constructers' : (helper rest)
                 helper (_:rest) = helper rest
+
+        enum_map :: Map
+        enum_map = zip (names top_level) (map Number' (map (fromIntegral) ([0..999] :: [Integer])))
+                where
+                    names :: [TopLevel] -> [String]
+                    names [] = []
+                    names (TL_Enumeration (Enumeration _ e _) : rest) = e ++ (names rest)
+                    names (_:rest) = names rest
