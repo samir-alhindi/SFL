@@ -27,6 +27,5 @@ area shape = match shape with
     case Rectangle width height -> width * height
     else                        -> -1;
 
-
 data Shape = Circle radius | Rectangle width height | Triangle base height;
 data Person = Person name age hobby;

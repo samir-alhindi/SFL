@@ -101,7 +101,7 @@ global stmts = Global (constructers_and_atributes_map ++ functions_map)
                         helper :: [Stmt] -> [String]
                         helper [] = []
                         helper (Function name _ _ : xs) = name : (helper xs)
-                        helper (x:xs) = helper xs
+                        helper (_:xs) = helper xs
 
                 closure :: Environment
                 closure = Environment (functions_map) (Global constructers_and_atributes_map)
@@ -130,4 +130,4 @@ global stmts = Global (constructers_and_atributes_map ++ functions_map)
                 helper :: [Stmt] -> [[Constructer]]
                 helper [] = []
                 helper (ClassDeclre _ constructers' _: xs) = constructers' : (helper xs)
-                helper (x:xs) = helper xs  
+                helper (_:xs) = helper xs

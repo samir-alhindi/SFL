@@ -38,7 +38,7 @@ class' = do
         constructer :: Parser Constructer
         constructer = do
             name <- m_identifier
-            parameters <- many m_identifier
+            parameters <- many1 m_identifier
             return (Constructer name parameters)
 
 function :: Parser Stmt
