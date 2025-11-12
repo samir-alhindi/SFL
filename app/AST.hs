@@ -18,6 +18,7 @@ data Expr =
       Number Double
     | Boolean Bool
     | Name SourcePos String
+    | Name' String
     | LetExpr String Expr Expr
     | Binary SourcePos BinOpp Expr Expr
     | Unary SourcePos UnaryOpp Expr
@@ -25,6 +26,7 @@ data Expr =
     | Ternary SourcePos Expr Expr Expr
     | Lambda [String] Expr
     | Call SourcePos Expr [Expr]
+    | Call' Expr [Expr]
     | List [Expr]
     | Match SourcePos Expr [(Expr,Expr)] Expr
     | Destructer String [String]
@@ -35,7 +37,7 @@ data Expr =
 data BinOpp = Plus | Minus | Multiply | Divide | Mod
   | And | Or
   | Greater | Less | GreaterEqual | LessEqual | DoubleEquals | NotEquals
-  | Bind
+  | Curry | Bind
   | Cons | Concat
   deriving (Show, Eq)
 

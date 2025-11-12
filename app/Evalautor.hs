@@ -4,17 +4,73 @@ import AST
 import RuntimeData
 import Text.Parsec
 import Data.Fixed (mod')
- 
-exec_program :: [Stmt] -> Either Error' (IO ())
-exec_program program = helper program (Global [])
+
+global :: [Stmt] -> Environment
+global stmts = Global (constructers_and_atributes_map ++ functions_map)
     where
-        helper :: [Stmt] -> Environment -> Either Error' (IO ())
-        helper [] _ = Right (return ())
-        helper (stmt:rest) envi = do
-            (envi', io) <- exec stmt envi
-            io'         <- helper rest envi'
-            return (io >> io')
- 
+        functions_map :: Map
+        functions_map = map (\(name, f) -> (name, f closure)) (zip function_names functions)
+            where
+                functions :: [(Environment -> Value)]
+                functions = map partial_eval (filter is_func stmts)
+                    where
+                        is_func :: Stmt -> Bool
+                        is_func (Function _ _ _) = True
+                        is_func _             = False
+                        
+                        partial_eval :: Stmt -> (Environment -> Value)
+                        partial_eval (Function name parameter body) = Function' name parameter body
+                
+                function_names :: [String]
+                function_names = helper stmts
+                    where
+                        helper :: [Stmt] -> [String]
+                        helper [] = []
+                        helper (Function name _ _ : xs) = name : (helper xs)
+                        helper (x:xs) = helper xs
+
+                closure :: Environment
+                closure = Environment (functions_map) (Global constructers_and_atributes_map)
+
+        constructers_and_atributes_map :: Map
+        constructers_and_atributes_map = attribute_functions ++ constructer_functions
+            where
+                constructer_functions :: Map
+                constructer_functions = map (\(Constructer name parameters) -> (name, Function' name parameters (body name) rec_env)) constructers
+                    where
+                        body :: String -> Expr
+                        body name = Lambda [name] (Hack (Name' name))
+
+                        rec_env :: Environment
+                        rec_env = Environment constructers_and_atributes_map (Global [])
+
+                attribute_functions :: Map
+                attribute_functions = map (\parameter -> (parameter, Function' parameter ["object"] (Call' (Name' "object") [StringExpr parameter]) (Global []))) attr_names
+                    where
+                        attr_names :: [String]
+                        attr_names = concat (map (\(Constructer _ parameters) -> parameters) constructers)
+
+        constructers :: [Constructer]
+        constructers = concat (helper stmts)
+            where
+                helper :: [Stmt] -> [[Constructer]]
+                helper [] = []
+                helper (ClassDeclre _ constructers' _: xs) = constructers' : (helper xs)
+                helper (x:xs) = helper xs  
+
+
+exec_program :: [Stmt] -> Either Error' (IO ())
+exec_program program = helper program (global program)
+        where
+            helper :: [Stmt] -> Environment -> Either Error' (IO ())
+            helper [] _ = Right (return ())
+            helper ((Function _ _ _ ):rest) envi = helper rest envi
+            helper ((ClassDeclre _ _ _):rest) envi = helper rest envi
+            helper (stmt:rest) envi = do
+                (envi', io) <- exec stmt envi
+                io'         <- helper rest envi'
+                return (io >> io')
+
 exec ::  Stmt -> Environment -> Either Error' (Environment, IO())
 exec (Print expr) envi = do
     result <- eval expr envi
@@ -44,42 +100,9 @@ exec (Block stmts) envi = do
             (_, io')    <- exec_block rest envi'''
             Right (envi'', (io >> io'))
 
-exec (Function name parameters body) envi =
-    if length parameters == 0
-        then no_arg_func 
-        else Right (recEnv, return ())
-            where
-                recEnv :: Environment
-                recEnv = Environment [(name, func)] envi
+exec (Function name parameters body) envi = undefined
 
-                func   :: Value
-                func   = Function' name parameters body recEnv (length parameters)
-            
-                no_arg_func :: Either Error' (Environment, IO())
-                no_arg_func = do
-                    val <- eval body envi
-                    let envi' = extend_envi envi (name, val)
-                    return (envi', return ())
-
-exec (ClassDeclre _ constructers pos) envi = Right (new_envi,return())
-    where 
-        new_envi :: Environment
-        new_envi = extend_envi' envi (attribute_functions ++ constructer_functions)
-            where
-                constructer_functions :: [(String, Value)]
-                constructer_functions = map (\(Constructer name parameters) -> (name, Function' name parameters (body name) rec_env (length parameters))) constructers
-                    where
-                        body :: String -> Expr
-                        body name = Lambda [name] (Hack (Name pos name))
-
-                        rec_env :: Environment
-                        rec_env = Environment constructer_functions envi
-
-                attribute_functions :: [(String, Value)]
-                attribute_functions = map (\parameter -> (parameter, Function' parameter ["object"] (Call pos (Name pos "object") [StringExpr parameter]) envi 1))  get_attr_names
-                    where
-                        get_attr_names :: [String]
-                        get_attr_names = concat (map (\(Constructer _ parameters) -> parameters) constructers)
+exec (ClassDeclre _ constructers pos) envi = undefined
 
 eval :: Expr -> Environment -> Either Error' Value
 eval (Ternary pos condition then_branch else_branch) envi = do
@@ -87,7 +110,10 @@ eval (Ternary pos condition then_branch else_branch) envi = do
     if condition' then eval then_branch envi else eval else_branch envi
 
 eval (StringExpr str) _ = Right (String' str)
-eval (Name pos name) envi = find envi name pos
+
+eval (Name pos name) envi = (find envi name pos) >>= eval_name
+eval (Name' name) envi = (find' envi name) >>= eval_name
+
 eval (Number n) _ = Right (Number' n)
 eval (Boolean b) _ = Right (Boolean' b)
 
@@ -95,7 +121,8 @@ eval (Binary pos opp e1 e2) envi
     | opp `elem` [Minus, Multiply, Divide, Mod] = binary_number
     | opp `elem` [And, Or]                 = binary_boolean
     | opp == Plus                          = plus
-    | opp == Bind                          = bind
+    | opp == Curry                         = curry
+    | opp == Bind                          = undefined
     | opp == Cons                          = cons
     | opp == Concat                        = concatenate
     | otherwise                            = relational
@@ -148,25 +175,25 @@ eval (Binary pos opp e1 e2) envi
                 (String' s1, String' s2) -> return (String' (s1 ++ s2))
                 _ -> Left (Error'("cannot add value of types "++(type_of e1')++" and "++(type_of e2')) pos)
     
-        bind :: Either Error' Value
-        bind = do
+        curry :: Either Error' Value
+        curry = do
             f <- eval e1 envi
             x <- eval e2 envi
             case f of
-                (Lambda'        parameters body closure arity) -> helper x (Lambda')        parameters body closure arity
-                (Function' name parameters body closure arity) -> helper x (Function' name) parameters body closure arity
+                (Lambda'        parameters body closure) -> helper x (Lambda')        parameters body closure (length parameters)
+                (Function' name parameters body closure) -> helper x (Function' name) parameters body closure (length parameters)
                 _ -> Left (Error' ("Left '><' opperand must be a callable and not of type " ++ (type_of f)) pos)
  
             where
                 helper :: Value
-                        -> ([String] -> Expr -> Environment -> Int -> Value)
+                        -> ([String] -> Expr -> Environment -> Value)
                         -> [String] -> Expr -> Environment -> Int -> Either Error' Value
                 helper x callable parameters body closure arity =
                     if arity == 1
                         then eval (Call pos e1 [e2]) envi
                         else
                             let closure' = Environment ((head parameters, x) : []) closure
-                            in Right (callable (tail parameters) body closure' (arity-1))
+                            in Right (callable (tail parameters) body closure')
 
         cons :: Either Error' Value
         cons = do
@@ -232,13 +259,31 @@ eval (Unary pos opp e) envi = do
                 List' []     -> Left  (Error' ("Cannot get tail of empty list") pos)
                 _ -> Left (Error' ("'#' opperand must be a list and not of type "++(type_of v)) pos)
 
-eval (Lambda parameters body) envi = Right (Lambda' parameters body envi (length parameters))
- 
+eval (Lambda parameters body) envi = Right (Lambda' parameters body envi )
+
+eval (Call' callee args) envi = do
+    callee' <- eval callee envi
+    case callee' of
+        (Function' _ parameters body closure) -> eval_call parameters body closure (length parameters)
+        (Lambda'     parameters body closure) -> eval_call parameters body closure (length parameters)
+        _                                           -> Left (Error'' ("Cannot call: " ++ (type_of callee')))
+    where
+        eval_call :: [String] -> Expr -> Environment -> Int -> Either Error' Value
+        eval_call parameters body closure arity  = do
+            check_arity arity (length args)
+            args' <- sequence (map ((flip eval) envi) args)
+            let pairs = zip parameters args'
+            let envi' = Environment pairs closure
+            result <- eval body envi'
+            return result
+
+        check_arity :: Int -> Int -> Either Error' ()
+        check_arity expected_arity actual_arity = if expected_arity == actual_arity then Right () else Left (Error'' ("Exptected an arity of " ++ (show expected_arity) ++ " but got " ++ (show actual_arity)))
 eval (Call pos callee args) envi = do
     callee' <- eval callee envi
     case callee' of
-        (Function' _ parameters body closure arity) -> eval_call parameters body closure arity
-        (Lambda'     parameters body closure arity) -> eval_call parameters body closure arity
+        (Function' _ parameters body closure) -> eval_call parameters body closure (length parameters)
+        (Lambda'     parameters body closure) -> eval_call parameters body closure (length parameters)
         _                                           -> Left (Error' ("Cannot call: " ++ (type_of callee')) pos)
     where
         eval_call :: [String] -> Expr -> Environment -> Int -> Either Error' Value
@@ -267,7 +312,7 @@ eval (Match pos expr cases wild_card) envi = (eval expr envi) >>= (\ value -> (c
     where
         check_cases :: Value -> [(Expr, Expr)] -> Either Error' Value
         check_cases _ [] = eval wild_card envi
-        check_cases value@(Lambda' (x:_) _ closure _) ((Destructer constructer_name destructer_attributes, branch):rest) =
+        check_cases value@(Lambda' (x:_) _ closure) ((Destructer constructer_name destructer_attributes, branch):rest) =
             if x == constructer_name
                 then branch_envi >>= (\envi' -> eval branch envi')
                 else check_cases value rest
@@ -282,7 +327,7 @@ eval (Match pos expr cases wild_card) envi = (eval expr envi) >>= (\ value -> (c
                             og_attributes =
                                 case find closure constructer_name pos of
                                     Left err            -> Left err
-                                    Right (Function' _ attributes _ _ _) -> Right attributes
+                                    Right (Function' _ attributes _ _) -> Right attributes
                                     _ -> Left (Error'' "This shouldn't run, It'll always find the constructer in the lambda's own closure.")
 
         -- Destructers should never be evalauted:                             
@@ -296,13 +341,17 @@ eval (Match pos expr cases wild_card) envi = (eval expr envi) >>= (\ value -> (c
 
 eval (Destructer _ _) _ = Left (Error'' "Destructers shouldn't be evalauted like that.")
 
-
 eval (Hack expr) envi = case expr of
-    (Name pos name) -> do
-        name' <- eval (Name pos name) envi
-        result <- eval (Name pos ( get_str name')) envi
+    (Name' name) -> do
+        name' <- eval (Name' name) envi
+        result <- eval (Name' ( get_str name')) envi
         return result
-    _ -> Right (String' "This will never run.")
+    _ -> Left (Error'' "This will never run.")
+
+eval_name :: Value -> Either Error' Value
+eval_name value = case value of
+                    (Function' _ [] body closure) -> eval body closure
+                    _ -> Right value
 
 is_bool :: Environment -> Expr -> SourcePos -> Either Error' Bool
 is_bool envi expr pos = case eval expr envi of
@@ -315,6 +364,6 @@ type_of v = case v of
     String' _           -> "string"
     Number' _           -> "number"
     Boolean'   _        -> "boolean"
-    Lambda' _ _ _ _     -> "lambda"
-    Function' _ _ _ _ _ -> "function"
+    Lambda' _ _ _       -> "lambda"
+    Function' _ _ _ _   -> "function"
     List' _             -> "list"

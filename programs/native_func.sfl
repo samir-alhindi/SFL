@@ -1,4 +1,1 @@
 
-
-word = "samir";
-print (to_upper word);

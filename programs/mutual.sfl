@@ -1,0 +1,15 @@
+
+
+print even 5;
+print odd 5;
+
+print even 10;
+print odd 10;
+
+even n = if n == 0
+    then true
+    else odd (n-1);
+
+odd n = if n == 0
+    then false
+    else even (n-1);

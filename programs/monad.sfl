@@ -1,0 +1,3 @@
+
+
+print Right 5 >>= (\n -> Right (n + 5));

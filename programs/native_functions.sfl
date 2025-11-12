@@ -85,6 +85,11 @@ replicate n elem = if n <= 0
                     then []
                     else elem : (replicate (n-1) elem);
 
+last list = match len list with
+                case 0 -> "Cannot get last element of empty list"
+                case 1 -> !list
+                else   -> last (#list);
+
 numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 print map    (\n -> n * n)      numbers;
@@ -112,3 +117,9 @@ matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
 print concat matrix;
 
 print replicate 5 "Samir is cool :D";
+
+print last names;
+print last numbers;
+print last [];
+print last [1];
+print last ["x", 5];

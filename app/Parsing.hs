@@ -85,7 +85,7 @@ def :: LanguageDef ()
 def = emptyDef {
     opStart = oneOf "+-*/><=!:#%",
     opLetter = oneOf "<>=+",
-    reservedOpNames = ["+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!=", "and", "or", "not", "=", "><", "\\", "->", "!", "#", ":", "%", "|", "++"],
+    reservedOpNames = ["+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!=", "and", "or", "not", "=", "><", "\\", "->", "!", "#", ":", "%", "|", "++", ">>="],
     reservedNames  = ["true", "false", "and", "or", "not", "if", "then", "else", "let", "in", "match", "case", "with", "data"],
     commentLine = "--",
     commentStart = "{-",
@@ -164,7 +164,8 @@ table = [
     [Infix  (m_reservedOp "and" >> getPosition >>= \ pos -> return (Binary pos And)) AssocLeft                    ],
     [Infix  (m_reservedOp "or"  >> getPosition >>= \ pos -> return (Binary pos Or)) AssocLeft                      ],
     
-    [Infix (m_reservedOp "><"   >> getPosition >>= \ pos -> return (Binary pos Bind)) AssocLeft]]    
+    [Infix (m_reservedOp "><"   >> getPosition >>= \ pos -> return (Binary pos Curry)) AssocLeft,
+     Infix (m_reservedOp ">>="  >> getPosition >>= \ pos -> return (Binary pos Bind)) AssocLeft]]    
 
 number :: Parser Expr
 number = f <$> m_naturalOrFloat

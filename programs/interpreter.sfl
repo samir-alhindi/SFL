@@ -1,0 +1,135 @@
+
+-- Imports:
+map func list = if list == []
+    then []
+    else func (!list) : map func (#list);
+
+is_empty list = if list == [] then true else false;
+
+len list = if is_empty list
+    then 0
+    else 1 + len (#list);
+
+filter predicate list = if is_empty list
+    then []
+    else
+        if predicate (!list)
+            then !list : filter predicate (#list)
+            else filter predicate (#list);
+
+last list = match len list with
+                case 0 -> "Cannot get last element of empty list"
+                case 1 -> !list
+                else   -> last (#list);
+
+zip l1 l2 = if is_empty l1 or is_empty l2
+                then []
+                else [!l1, !l2] : (zip (#l1) (#l2));
+-- End Imports.
+
+data Expre =
+      Number n
+    | Binary opp e1 e2
+    | Unary opp e
+    | Name s
+    | Let name e1 e2 -- let x = 5 in x * 2
+    | Lambda parameters body closure -- \ x y -> x + y
+    | Apply lambda args;
+
+data BinaryOpp = Plus | Minus | Multiply | Divide;
+data UnaryOpp  = Negation;
+
+data Environment = Environment table outer | Global table;
+
+find name envi =
+    let p = (\ name pair -> name == !pair) in
+        match envi with
+            case Global table            -> let results = (filter (p >< name) table) in
+                                            if is_empty results
+                                                then "unbound name: " + name
+                                                else last (!results)
+            case Environment table outer -> let results = (filter (p >< name) table) in
+                                            if is_empty results
+                                                then find name outer
+                                                else last (!results)
+            else -> "Please enter an environment.";
+
+extend_envi envi pair = match envi with
+    case Environment table outer -> Environment (pair:table) outer
+    case Global table            -> Global (pair:table)
+    else                         -> "Please enter an environment.";
+
+
+eval envi expre = match expre with
+    case Number n           -> n
+    case Binary opp e1 e2   ->  let v1 = eval envi e1 in
+                                let v2 = eval envi e2 in
+                                match opp with
+                                    case Plus     -> v1 + v2
+                                    case Minus    -> v1 - v2
+                                    case Multiply -> v1 * v2
+                                    case Divide   -> v1 / v2
+                                    else          -> "Invalid binary opperator."
+    case Unary opp e        ->  let v = eval envi e in
+                                match opp with
+                                    case Negation -> -v
+                                    else          -> "Inavlid unary opperator."
+    
+    case Name s             -> find s envi
+
+    case Let name e1 e2     ->  let new_envi = extend_envi envi [name, eval envi e1]
+                                in eval new_envi e2
+    
+    case Lambda p b c       -> Lambda p b c
+
+    case Apply lambda args   -> match lambda with
+                                case Lambda params body closure -> if (len params) != (len args)
+                                                                    then "Expected an arity of " + (len params)
+                                                                    else let values = map (eval >< envi) args in
+                                                                         let pairs = zip params values in
+                                                                         let new_envi = Environment pairs closure in
+                                                                         eval new_envi body
+                                                                         
+                                                                        
+
+                                else -> "Can only apply lambdas."
+
+    else                    -> "is Inavlid expression type.";
+
+
+
+tests = [
+    Number 1, -- 1
+
+    Binary Plus (Number 5) (Number 6), -- 5 + 6
+    Binary Multiply (Number 10) (Number 2), -- 10 * 2
+    Binary Minus (Number 5) (Number 10), -- 5 - 10
+    Binary Divide (Number 5) (Number 2), -- 5 / 2
+
+    Unary Negation (Number 3), -- -3
+    Unary Negation (Unary Negation (Number 5)), -- --5
+
+    Binary Plus (Number 1) (Binary Multiply (Number 2) (Number 3)), -- 1 + 2 * 3
+    Unary Negation ( Binary Divide (Number 6) (Number 2)) -- -(6 / 2)
+    ];
+
+test_envi = Global [];
+print map (eval >< test_envi) tests;
+
+test_envi_2 = Environment [["x", 5]] test_envi;
+print eval test_envi_2 (Binary Plus (Name "x") (Number 1));
+
+test_envi_3 = Environment [["x", 10], ["x", 15]] test_envi_2;
+print eval test_envi_3 (Name "x");
+
+test_envi_4 = Environment [] (Global [["num", 18]]);
+print eval test_envi_4 (Name "num");
+
+print eval test_envi_3 (Let "x" (Number 5) (Binary Plus (Name "x") (Number 2)));
+
+lambda = Lambda ["x", "y"] (Binary Plus (Name "x") (Name "y")) test_envi;
+application = Apply lambda [Number 2, Number 3];
+print eval test_envi application;
+
+
+currey = Lambda ["x"] (Lambda ["y"] (Binary Plus (Name "x") (Name "y")) ) test_envi;
