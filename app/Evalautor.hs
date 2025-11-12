@@ -5,60 +5,6 @@ import RuntimeData
 import Text.Parsec
 import Data.Fixed (mod')
 
-global :: [Stmt] -> Environment
-global stmts = Global (constructers_and_atributes_map ++ functions_map)
-    where
-        functions_map :: Map
-        functions_map = map (\(name, f) -> (name, f closure)) (zip function_names functions)
-            where
-                functions :: [(Environment -> Value)]
-                functions = map partial_eval (filter is_func stmts)
-                    where
-                        is_func :: Stmt -> Bool
-                        is_func (Function _ _ _) = True
-                        is_func _             = False
-                        
-                        partial_eval :: Stmt -> (Environment -> Value)
-                        partial_eval (Function name parameter body) = Function' name parameter body
-                
-                function_names :: [String]
-                function_names = helper stmts
-                    where
-                        helper :: [Stmt] -> [String]
-                        helper [] = []
-                        helper (Function name _ _ : xs) = name : (helper xs)
-                        helper (x:xs) = helper xs
-
-                closure :: Environment
-                closure = Environment (functions_map) (Global constructers_and_atributes_map)
-
-        constructers_and_atributes_map :: Map
-        constructers_and_atributes_map = attribute_functions ++ constructer_functions
-            where
-                constructer_functions :: Map
-                constructer_functions = map (\(Constructer name parameters) -> (name, Function' name parameters (body name) rec_env)) constructers
-                    where
-                        body :: String -> Expr
-                        body name = Lambda [name] (Hack (Name' name))
-
-                        rec_env :: Environment
-                        rec_env = Environment constructers_and_atributes_map (Global [])
-
-                attribute_functions :: Map
-                attribute_functions = map (\parameter -> (parameter, Function' parameter ["object"] (Call' (Name' "object") [StringExpr parameter]) (Global []))) attr_names
-                    where
-                        attr_names :: [String]
-                        attr_names = concat (map (\(Constructer _ parameters) -> parameters) constructers)
-
-        constructers :: [Constructer]
-        constructers = concat (helper stmts)
-            where
-                helper :: [Stmt] -> [[Constructer]]
-                helper [] = []
-                helper (ClassDeclre _ constructers' _: xs) = constructers' : (helper xs)
-                helper (x:xs) = helper xs  
-
-
 exec_program :: [Stmt] -> Either Error' (IO ())
 exec_program program = helper program (global program)
         where
@@ -100,9 +46,8 @@ exec (Block stmts) envi = do
             (_, io')    <- exec_block rest envi'''
             Right (envi'', (io >> io'))
 
-exec (Function name parameters body) envi = undefined
-
-exec (ClassDeclre _ constructers pos) envi = undefined
+exec (Function _ _ _) _ = undefined
+exec (ClassDeclre _ _ _) _ = undefined
 
 eval :: Expr -> Environment -> Either Error' Value
 eval (Ternary pos condition then_branch else_branch) envi = do
@@ -121,7 +66,7 @@ eval (Binary pos opp e1 e2) envi
     | opp `elem` [Minus, Multiply, Divide, Mod] = binary_number
     | opp `elem` [And, Or]                 = binary_boolean
     | opp == Plus                          = plus
-    | opp == Curry                         = curry
+    | opp == Curry                         = curry'
     | opp == Bind                          = undefined
     | opp == Cons                          = cons
     | opp == Concat                        = concatenate
@@ -175,8 +120,8 @@ eval (Binary pos opp e1 e2) envi
                 (String' s1, String' s2) -> return (String' (s1 ++ s2))
                 _ -> Left (Error'("cannot add value of types "++(type_of e1')++" and "++(type_of e2')) pos)
     
-        curry :: Either Error' Value
-        curry = do
+        curry' :: Either Error' Value
+        curry' = do
             f <- eval e1 envi
             x <- eval e2 envi
             case f of
@@ -261,42 +206,8 @@ eval (Unary pos opp e) envi = do
 
 eval (Lambda parameters body) envi = Right (Lambda' parameters body envi )
 
-eval (Call' callee args) envi = do
-    callee' <- eval callee envi
-    case callee' of
-        (Function' _ parameters body closure) -> eval_call parameters body closure (length parameters)
-        (Lambda'     parameters body closure) -> eval_call parameters body closure (length parameters)
-        _                                           -> Left (Error'' ("Cannot call: " ++ (type_of callee')))
-    where
-        eval_call :: [String] -> Expr -> Environment -> Int -> Either Error' Value
-        eval_call parameters body closure arity  = do
-            check_arity arity (length args)
-            args' <- sequence (map ((flip eval) envi) args)
-            let pairs = zip parameters args'
-            let envi' = Environment pairs closure
-            result <- eval body envi'
-            return result
-
-        check_arity :: Int -> Int -> Either Error' ()
-        check_arity expected_arity actual_arity = if expected_arity == actual_arity then Right () else Left (Error'' ("Exptected an arity of " ++ (show expected_arity) ++ " but got " ++ (show actual_arity)))
-eval (Call pos callee args) envi = do
-    callee' <- eval callee envi
-    case callee' of
-        (Function' _ parameters body closure) -> eval_call parameters body closure (length parameters)
-        (Lambda'     parameters body closure) -> eval_call parameters body closure (length parameters)
-        _                                           -> Left (Error' ("Cannot call: " ++ (type_of callee')) pos)
-    where
-        eval_call :: [String] -> Expr -> Environment -> Int -> Either Error' Value
-        eval_call parameters body closure arity  = do
-            check_arity arity (length args)
-            args' <- sequence (map ((flip eval) envi) args)
-            let pairs = zip parameters args'
-            let envi' = Environment pairs closure
-            result <- eval body envi'
-            return result
-
-        check_arity :: Int -> Int -> Either Error' ()
-        check_arity expected_arity actual_arity = if expected_arity == actual_arity then Right () else Left (Error' ("Exptected an arity of " ++ (show expected_arity) ++ " but got " ++ (show actual_arity)) pos)
+eval (Call' callee args) envi = eval_call envi callee args (Error'')
+eval (Call pos callee args) envi = eval_call envi callee args (`Error'` pos)
 
 eval (LetExpr name init' body) envi = do
     value <- eval init' envi
@@ -347,6 +258,26 @@ eval (Hack expr) envi = case expr of
         result <- eval (Name' ( get_str name')) envi
         return result
     _ -> Left (Error'' "This will never run.")
+
+eval_call :: Environment -> Expr -> [Expr] -> (String -> Error') -> Either Error' Value
+eval_call envi callee args error' = do
+    callee' <- eval callee envi
+    case callee' of
+        (Function' _ parameters body closure) -> helper parameters body closure (length parameters)
+        (Lambda'     parameters body closure) -> helper parameters body closure (length parameters)
+        _                                           -> Left (error' ("Cannot call: " ++ (type_of callee')))
+    where
+        helper :: [String] -> Expr -> Environment -> Int -> Either Error' Value
+        helper parameters body closure arity  = do
+            check_arity arity (length args)
+            args' <- sequence (map ((flip eval) envi) args)
+            let pairs = zip parameters args'
+            let envi' = Environment pairs closure
+            result <- eval body envi'
+            return result
+
+        check_arity :: Int -> Int -> Either Error' ()
+        check_arity expected_arity actual_arity = if expected_arity == actual_arity then Right () else Left (error' ("Exptected an arity of " ++ (show expected_arity) ++ " but got " ++ (show actual_arity)))
 
 eval_name :: Value -> Either Error' Value
 eval_name value = case value of

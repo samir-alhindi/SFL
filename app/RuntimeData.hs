@@ -12,7 +12,6 @@ data Value =
     | Lambda' [String] Expr Environment
     | Function' String [String] Expr Environment
     | List' [Value]
-    | Monad' MonadType Value
 
 data MonadType = Right' | Left' | Just' | Nothing' deriving(Eq)
 
@@ -40,7 +39,6 @@ instance Show Value where
     show (Function' name _ _ _ ) = "function " ++ name
     show (List' elements) = show elements
     
-
 
 type Map = [(String, Value)]
 
@@ -80,3 +78,56 @@ extend_envi (Environment map' outer)  pair = Environment (pair : map') outer
 extend_envi' :: Environment -> [(String, Value)] -> Environment
 extend_envi' (Global map') pairs = Global (pairs ++ map')
 extend_envi' (Environment map' outer)  pairs = Environment (pairs ++ map') outer
+
+global :: [Stmt] -> Environment
+global stmts = Global (constructers_and_atributes_map ++ functions_map)
+    where
+        functions_map :: Map
+        functions_map = map (\(name, f) -> (name, f closure)) (zip function_names functions)
+            where
+                functions :: [(Environment -> Value)]
+                functions = map partial_eval (filter is_func stmts)
+                    where
+                        is_func :: Stmt -> Bool
+                        is_func (Function _ _ _) = True
+                        is_func _             = False
+                        
+                        partial_eval :: Stmt -> (Environment -> Value)
+                        partial_eval (Function name parameter body) = Function' name parameter body
+                
+                function_names :: [String]
+                function_names = helper stmts
+                    where
+                        helper :: [Stmt] -> [String]
+                        helper [] = []
+                        helper (Function name _ _ : xs) = name : (helper xs)
+                        helper (x:xs) = helper xs
+
+                closure :: Environment
+                closure = Environment (functions_map) (Global constructers_and_atributes_map)
+
+        constructers_and_atributes_map :: Map
+        constructers_and_atributes_map = attribute_functions ++ constructer_functions
+            where
+                constructer_functions :: Map
+                constructer_functions = map (\(Constructer name parameters) -> (name, Function' name parameters (body name) rec_env)) constructers
+                    where
+                        body :: String -> Expr
+                        body name = Lambda [name] (Hack (Name' name))
+
+                        rec_env :: Environment
+                        rec_env = Environment constructers_and_atributes_map (Global [])
+
+                attribute_functions :: Map
+                attribute_functions = map (\parameter -> (parameter, Function' parameter ["object"] (Call' (Name' "object") [StringExpr parameter]) (Global []))) attr_names
+                    where
+                        attr_names :: [String]
+                        attr_names = concat (map (\(Constructer _ parameters) -> parameters) constructers)
+
+        constructers :: [Constructer]
+        constructers = concat (helper stmts)
+            where
+                helper :: [Stmt] -> [[Constructer]]
+                helper [] = []
+                helper (ClassDeclre _ constructers' _: xs) = constructers' : (helper xs)
+                helper (x:xs) = helper xs  

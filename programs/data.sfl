@@ -1,6 +1,5 @@
 
-data Shape = Circle radius | Rectangle width height | Triangle base height;
-data Person = Person name age hobby;
+
 
 my_circle = Circle 5;
 my_rect   = Rectangle 10 20;
@@ -21,9 +20,13 @@ samir = Person "Samir" 20 "Coding";
 print hobby samir;
 print age samir;
 
+print area my_circle;
+
 area shape = match shape with
     case Circle radius          -> radius * radius * 3.14
     case Rectangle width height -> width * height
     else                        -> -1;
 
-print area my_circle;
+
+data Shape = Circle radius | Rectangle width height | Triangle base height;
+data Person = Person name age hobby;
