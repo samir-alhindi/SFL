@@ -1,6 +1,5 @@
 
 
-
 my_circle = Circle 5;
 my_rect   = Rectangle 10 20;
 

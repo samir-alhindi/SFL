@@ -79,30 +79,23 @@ extend_envi' :: Environment -> [(String, Value)] -> Environment
 extend_envi' (Global map') pairs = Global (pairs ++ map')
 extend_envi' (Environment map' outer)  pairs = Environment (pairs ++ map') outer
 
-global :: [Stmt] -> Environment
-global stmts = Global (constructers_and_atributes_map ++ functions_map)
+global :: [TopLevel] -> Environment
+global top_level = Global (constructers_and_atributes_map ++ functions_map)
     where
         functions_map :: Map
-        functions_map = map (\(name, f) -> (name, f closure)) (zip function_names functions)
+        functions_map = map (\(name, f) -> (name, f closure)) (almost_functions)
             where
-                functions :: [(Environment -> Value)]
-                functions = map partial_eval (filter is_func stmts)
+                almost_functions :: [(String, (Environment -> Value))]
+                almost_functions = map partial_eval (functions top_level)
                     where
-                        is_func :: Stmt -> Bool
-                        is_func (Function _ _ _) = True
-                        is_func _             = False
+                        functions :: [TopLevel] -> [Function]
+                        functions (TL_Function f : rest) = f : (functions rest)
+                        functions []             = []
+                        functions (_:rest) = functions rest
                         
-                        partial_eval :: Stmt -> (Environment -> Value)
-                        partial_eval (Function name parameter body) = Function' name parameter body
+                        partial_eval :: Function -> (String, (Environment -> Value))
+                        partial_eval (Function name parameter body) = (name, Function' name parameter body)
                 
-                function_names :: [String]
-                function_names = helper stmts
-                    where
-                        helper :: [Stmt] -> [String]
-                        helper [] = []
-                        helper (Function name _ _ : xs) = name : (helper xs)
-                        helper (_:xs) = helper xs
-
                 closure :: Environment
                 closure = Environment (functions_map) (Global constructers_and_atributes_map)
 
@@ -125,9 +118,9 @@ global stmts = Global (constructers_and_atributes_map ++ functions_map)
                         attr_names = concat (map (\(Constructer _ parameters) -> parameters) constructers)
 
         constructers :: [Constructer]
-        constructers = concat (helper stmts)
+        constructers = concat (helper top_level)
             where
-                helper :: [Stmt] -> [[Constructer]]
+                helper :: [TopLevel] -> [[Constructer]]
                 helper [] = []
-                helper (ClassDeclre _ constructers' _: xs) = constructers' : (helper xs)
-                helper (_:xs) = helper xs
+                helper (TL_Class (Class _ constructers' _) : rest) = constructers' : (helper rest)
+                helper (_:rest) = helper rest

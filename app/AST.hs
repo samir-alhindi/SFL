@@ -3,16 +3,19 @@ module AST where
 
 import Text.Parsec
 
+data TopLevel = TL_Stmt Stmt | TL_Function Function | TL_Class Class
+
 data Stmt =
       Print Expr
     | If SourcePos Expr Stmt
     | IfElse SourcePos Expr Stmt Stmt
-    | Function String [String] Expr
     | Block [Stmt]
-    | ClassDeclre String [Constructer] SourcePos
     deriving Show
 
+data Class = Class String [Constructer] SourcePos
 data Constructer = Constructer String [String] deriving (Show, Eq)
+
+data Function = Function String [String] Expr
 
 data Expr =
       Number Double

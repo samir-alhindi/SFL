@@ -5,17 +5,16 @@ import RuntimeData
 import Text.Parsec
 import Data.Fixed (mod')
 
-exec_program :: [Stmt] -> Either Error' (IO ())
+exec_program :: [TopLevel] -> Either Error' (IO ())
 exec_program program = helper program (global program)
         where
-            helper :: [Stmt] -> Environment -> Either Error' (IO ())
+            helper :: [TopLevel] -> Environment -> Either Error' (IO ())
             helper [] _ = Right (return ())
-            helper ((Function _ _ _ ):rest) envi = helper rest envi
-            helper ((ClassDeclre _ _ _):rest) envi = helper rest envi
-            helper (stmt:rest) envi = do
+            helper (TL_Stmt stmt:rest) envi = do
                 (envi', io) <- exec stmt envi
                 io'         <- helper rest envi'
                 return (io >> io')
+            helper (_:rest) envi = helper rest envi
 
 exec ::  Stmt -> Environment -> Either Error' (Environment, IO())
 exec (Print expr) envi = do
@@ -45,9 +44,6 @@ exec (Block stmts) envi = do
             (envi''', io) <- exec stmt envi''
             (_, io')    <- exec_block rest envi'''
             Right (envi'', (io >> io'))
-
-exec (Function _ _ _) _ = undefined
-exec (ClassDeclre _ _ _) _ = undefined
 
 eval :: Expr -> Environment -> Either Error' Value
 eval (Ternary pos condition then_branch else_branch) envi = do

@@ -9,11 +9,14 @@ import Data.Functor.Identity
 
 import AST
  
-program :: Parser [Stmt]
-program = statement_sequence <* eof <?> "program"
+program :: Parser [TopLevel]
+program = top_level_sequence <* eof <?> "program"
 
-statement_sequence :: Parser [Stmt]
-statement_sequence = many1 statement
+top_level_sequence :: Parser [TopLevel]
+top_level_sequence = many1 top_level
+
+top_level :: Parser TopLevel
+top_level = (TL_Stmt <$> statement) <|> (TL_Function <$> function) <|> (TL_Class <$> class')
     
 statement :: Parser Stmt
 statement =
@@ -21,11 +24,9 @@ statement =
     <|> try if_else
     <|> try if'
     <|> try block
-    <|> try function
-    <|> try class'
     <?> "statement"
 
-class' :: Parser Stmt
+class' :: Parser Class
 class' = do
     m_reserved "data"
     pos <- getPosition
@@ -33,7 +34,7 @@ class' = do
     m_reservedOp "="
     constructers <- constructer `sepBy1` (m_reservedOp "|")
     _ <- m_semi
-    return (ClassDeclre name constructers pos)
+    return (Class name constructers pos)
     where
         constructer :: Parser Constructer
         constructer = do
@@ -41,7 +42,7 @@ class' = do
             parameters <- many1 m_identifier
             return (Constructer name parameters)
 
-function :: Parser Stmt
+function :: Parser Function
 function = do
     name <- m_identifier
     parameters <- many m_identifier
@@ -51,7 +52,7 @@ function = do
     return (Function name parameters body)
 
 block :: Parser Stmt
-block = Block <$> (m_braces statement_sequence)
+block = Block <$> (m_braces (many statement))
 
 print' :: Parser Stmt
 print' = do
@@ -267,5 +268,5 @@ match = do
 
 
 
-my_parse :: String -> Either ParseError [Stmt]
+my_parse :: String -> Either ParseError [TopLevel]
 my_parse source = parse (m_whiteSpace >> program) "" source
