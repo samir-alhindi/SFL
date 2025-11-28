@@ -260,21 +260,21 @@ match = do
     pos <- getPosition
     expr <- expression
     m_reserved "with"
-    cases <- many1 case_
+    patterns <- many1 pattern'
     m_reserved "else"
     m_reservedOp "->"
     wild_card <- expression
-    return (Match pos expr cases wild_card)
+    return (Match pos expr patterns wild_card)
     where
-        case_ :: Parser (Expr, Expr)
-        case_ = do
+        pattern' :: Parser (Pattern, Expr)
+        pattern' = do
             m_reserved "case"
-            case__ <- (try destructer <|> expression)
+            pattern'' <- (try (DestructerPattern <$> destructer) <|>(ExprPattern <$> expression))
             m_reservedOp "->"
             result <- expression
-            return (case__, result)
+            return (pattern'', result)
             where
-                destructer :: Parser Expr
+                destructer :: Parser Destructer
                 destructer = do
                     constructer_name <- m_identifier
                     attributes <- many1 m_identifier

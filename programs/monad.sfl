@@ -1,3 +1,10 @@
 
 
-print Right 5 >>= (\n -> Right (n + 5));
+data Either = Left val | Right val;
+
+bind either f = match either with
+                    case Right val -> f val
+                    else           -> either;
+
+result = bind (bind (Right 5) (\val -> Right (val+1))) (\val -> Right (val * 2));
+print val result;

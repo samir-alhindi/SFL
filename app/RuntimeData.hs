@@ -11,6 +11,9 @@ data Value =
     | String' {get_str :: String}
     | Lambda' [String] Expr Environment
     | Function' String [String] Expr Environment
+    | Constructer' String [String]
+    | Getter String
+    | Object String Map
     | List' [Value]
 
 data MonadType = Right' | Left' | Just' | Nothing' deriving(Eq)
@@ -24,12 +27,11 @@ instance Eq Value where
     (List' l1) == (List' l2) = l1 == l2
     _ == _ = False
 
-data Error' = Error' String SourcePos | Error'' String
+data Error' = Error' String SourcePos
 
 instance Show Error' where
     show (Error' err_log pos) =
         printf "Error at position (%d,%d): %s" (sourceLine pos) (sourceColumn pos) err_log
-    show (Error'' err_log) = err_log
 
 instance Show Value where
     show (Number' n) = if ".0" `isSuffixOf` (show n) then show (floor n :: Integer) else show n
@@ -37,6 +39,9 @@ instance Show Value where
     show (String' s) = show s
     show (Lambda' _ _ _ ) = "lambda"
     show (Function' name _ _ _ ) = "function " ++ name
+    show (Constructer' name _)   = "constructer " ++ name
+    show (Getter name)           = "getter " ++ name
+    show (Object name _)       = "object " ++ name
     show (List' elements) = show elements
     
 
@@ -54,18 +59,6 @@ find envi name pos = case envi of
         list -> let (_, value) = head list in Right value
     (Environment map' outer) -> case filter p map' of
         []   -> find outer name pos
-        list -> let (_, value) = head list in Right value
-    where
-        p :: (String, Value) -> Bool
-        p (k, _) = k == name
-
-find' :: Environment -> String -> Either Error' Value
-find' envi name = case envi of
-    (Global map') -> case filter p map' of
-        []   -> Left (Error'' ("unbound variable: " ++ name))
-        list -> let (_, value) = head list in Right value
-    (Environment map' outer) -> case filter p map' of
-        []   -> find' outer name
         list -> let (_, value) = head list in Right value
     where
         p :: (String, Value) -> Bool
@@ -100,19 +93,13 @@ global top_level = Global (constructers_and_atributes_map ++ functions_map ++ en
                 closure = Environment (functions_map) (Global (constructers_and_atributes_map ++ enum_map))
 
         constructers_and_atributes_map :: Map
-        constructers_and_atributes_map = attribute_functions ++ constructer_functions
+        constructers_and_atributes_map = getter_functions ++ constructer_functions
             where
                 constructer_functions :: Map
-                constructer_functions = map (\(Constructer name parameters) -> (name, Function' name parameters (body name) rec_env)) constructers
-                    where
-                        body :: String -> Expr
-                        body name = Lambda [name] (Hack (Name' name))
+                constructer_functions = map (\(Constructer name parameters) -> (name, Constructer' name parameters)) constructers
 
-                        rec_env :: Environment
-                        rec_env = Environment constructers_and_atributes_map (Global [])
-
-                attribute_functions :: Map
-                attribute_functions = map (\parameter -> (parameter, Function' parameter ["object"] (Call' (Name' "object") [StringExpr parameter]) (Global []))) attr_names
+                getter_functions :: Map
+                getter_functions = map (\parameter -> (parameter, Getter parameter)) attr_names
                     where
                         attr_names :: [String]
                         attr_names = concat (map (\(Constructer _ parameters) -> parameters) constructers)

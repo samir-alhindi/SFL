@@ -51,19 +51,18 @@ eval (Ternary pos condition then_branch else_branch) envi = do
     if condition' then eval then_branch envi else eval else_branch envi
 
 eval (StringExpr str) _ = Right (String' str)
-
-eval (Name pos name) envi = (find envi name pos) >>= eval_name
-eval (Name' name) envi = (find' envi name) >>= eval_name
-
 eval (Number n) _ = Right (Number' n)
 eval (Boolean b) _ = Right (Boolean' b)
+eval (Name pos name) envi = (find envi name pos) >>= \value -> case value of
+    Function' _ [] body closure -> eval body closure
+    _                           -> Right value
 
 eval (Binary pos opp e1 e2) envi
     | opp `elem` [Minus, Multiply, Divide, Mod] = binary_number
     | opp `elem` [And, Or]                 = binary_boolean
     | opp == Plus                          = plus
     | opp == Curry                         = curry'
-    | opp == Bind                          = undefined
+    | opp == Bind                          = bind'
     | opp == Cons                          = cons
     | opp == Concat                        = concatenate
     | otherwise                            = relational
@@ -76,7 +75,7 @@ eval (Binary pos opp e1 e2) envi
                 Multiply -> n1 * n2
                 Divide   -> n1 / n2
                 Mod      -> mod' n1 n2
-                _        -> -1 -- This will never run.
+                _        -> -9999 -- This will never run.
         
         binary_boolean :: Either Error' Value
         binary_boolean = do
@@ -135,6 +134,9 @@ eval (Binary pos opp e1 e2) envi
                         else
                             let closure' = Environment ((head parameters, x) : []) closure
                             in Right (callable (tail parameters) body closure')
+
+        bind' :: Either Error' Value
+        bind' = undefined
 
         cons :: Either Error' Value
         cons = do
@@ -200,10 +202,49 @@ eval (Unary pos opp e) envi = do
                 List' []     -> Left  (Error' ("Cannot get tail of empty list") pos)
                 _ -> Left (Error' ("'#' opperand must be a list and not of type "++(type_of v)) pos)
 
-eval (Lambda parameters body) envi = Right (Lambda' parameters body envi )
+eval (Lambda parameters body) envi = Right (Lambda' parameters body envi)
 
-eval (Call' callee args) envi = eval_call envi callee args (Error'')
-eval (Call pos callee args) envi = eval_call envi callee args (`Error'` pos)
+eval (Call pos callee args) envi = do
+            callee' <- eval callee envi
+            case callee' of
+                (Function' _ parameters body closure) -> funcs_and_lambdas parameters body closure (length parameters)
+                (Lambda'     parameters body closure) -> funcs_and_lambdas parameters body closure (length parameters)
+                (Constructer' name parameters)        -> constructer name parameters
+                (Getter name)                         -> getter name
+                _                                     -> Left (Error' ("Cannot call: " ++ (type_of callee')) pos)
+            where
+
+                check_arity :: Int -> Int -> Either Error' ()
+                check_arity expected_arity actual_arity = if expected_arity == actual_arity then Right () else Left (Error' ("Exptected an arity of " ++ (show expected_arity) ++ " but got " ++ (show actual_arity)) pos)
+
+                funcs_and_lambdas :: [String] -> Expr -> Environment -> Int -> Either Error' Value
+                funcs_and_lambdas parameters body closure arity  = do
+                    check_arity arity (length args)
+                    args' <- sequence (map ((flip eval) envi) args)
+                    let pairs = zip parameters args'
+                    let envi' = Environment pairs closure
+                    result <- eval body envi'
+                    return result
+
+                constructer :: String -> [String] -> Either Error' Value
+                constructer name parameters = do
+                    check_arity (length parameters) (length args)
+                    args' <- sequence (map ((flip eval) envi) args)
+                    let obj_map = zip parameters args'
+                    return (Object name obj_map)
+
+                getter :: String -> Either Error' Value
+                getter name = do
+                    check_arity (1) (length args)
+                    object <- eval (head args) envi
+                    case object of
+                        Object _ obj_map -> find_atribute name obj_map
+                        _ -> Left (Error' ("getter arg must be an object and not of type: "++(type_of object)) pos)
+                    where
+                        find_atribute :: String -> Map -> Either Error' Value
+                        find_atribute name' [] = Left (Error' ("attribute "++name'++" not found in object") pos)
+                        find_atribute name' ((key, value):xs) = if name' == key then Right value else find_atribute name' xs
+
 
 eval (LetExpr name init' body) envi = do
     value <- eval init' envi
@@ -215,70 +256,25 @@ eval (List elements) envi = do
     elements' <- sequence (map (`eval` envi) elements)
     return (List' elements')
 
-eval (Match pos expr cases wild_card) envi = (eval expr envi) >>= (\ value -> (check_cases value cases))
+eval (Match _ expr patterns wild_card) envi = (eval expr envi) >>= (\ value -> (check_patterns value patterns))
     where
-        check_cases :: Value -> [(Expr, Expr)] -> Either Error' Value
-        check_cases _ [] = eval wild_card envi
-        check_cases value@(Lambda' (x:_) _ closure) ((Destructer constructer_name destructer_attributes, branch):rest) =
-            if x == constructer_name
-                then branch_envi >>= (\envi' -> eval branch envi')
-                else check_cases value rest
+        check_patterns :: Value -> [(Pattern, Expr)] -> Either Error' Value
+        check_patterns _ [] = eval wild_card envi
+        check_patterns value@(Object obj_name obj_map) (((DestructerPattern (Destructer constructer_name parameters)), branch): rest) =
+            if obj_name == constructer_name
+                then eval branch branch_envi
+                else check_patterns value rest
             where
-                branch_envi :: Either Error' Environment
-                branch_envi = do
-                    attributes <- og_attributes
-                    values <- sequence (map (\attr -> eval (Call pos expr [StringExpr attr]) envi) attributes)
-                    return (extend_envi' envi (zip destructer_attributes values))
-                        where
-                            og_attributes :: Either Error' [String]
-                            og_attributes =
-                                case find closure constructer_name pos of
-                                    Left err            -> Left err
-                                    Right (Function' _ attributes _ _) -> Right attributes
-                                    _ -> Left (Error'' "This shouldn't run, It'll always find the constructer in the lambda's own closure.")
+                branch_envi :: Environment
+                branch_envi = Environment (zip parameters (map (\(_,value') -> value') obj_map)) envi
 
-        -- Destructers should never be evalauted:                             
-        check_cases value ((Destructer _ _, _) : rest) = check_cases value rest
-
-        check_cases value ((case', branch) : rest) = do
-            result <- eval case' envi
+        check_patterns value ((ExprPattern pattern', branch) : rest) = do
+            result <- eval pattern' envi
             if result == value
                 then eval branch envi
-                else check_cases value rest
-
-eval (Destructer _ _) _ = Left (Error'' "Destructers shouldn't be evalauted like that.")
-
-eval (Hack expr) envi = case expr of
-    (Name' name) -> do
-        name' <- eval (Name' name) envi
-        result <- eval (Name' ( get_str name')) envi
-        return result
-    _ -> Left (Error'' "This will never run.")
-
-eval_call :: Environment -> Expr -> [Expr] -> (String -> Error') -> Either Error' Value
-eval_call envi callee args error' = do
-    callee' <- eval callee envi
-    case callee' of
-        (Function' _ parameters body closure) -> helper parameters body closure (length parameters)
-        (Lambda'     parameters body closure) -> helper parameters body closure (length parameters)
-        _                                           -> Left (error' ("Cannot call: " ++ (type_of callee')))
-    where
-        helper :: [String] -> Expr -> Environment -> Int -> Either Error' Value
-        helper parameters body closure arity  = do
-            check_arity arity (length args)
-            args' <- sequence (map ((flip eval) envi) args)
-            let pairs = zip parameters args'
-            let envi' = Environment pairs closure
-            result <- eval body envi'
-            return result
-
-        check_arity :: Int -> Int -> Either Error' ()
-        check_arity expected_arity actual_arity = if expected_arity == actual_arity then Right () else Left (error' ("Exptected an arity of " ++ (show expected_arity) ++ " but got " ++ (show actual_arity)))
-
-eval_name :: Value -> Either Error' Value
-eval_name value = case value of
-                    (Function' _ [] body closure) -> eval body closure
-                    _ -> Right value
+                else check_patterns value rest
+        
+        check_patterns value (_:rest) = check_patterns value rest
 
 is_bool :: Environment -> Expr -> SourcePos -> Either Error' Bool
 is_bool envi expr pos = case eval expr envi of
@@ -294,3 +290,6 @@ type_of v = case v of
     Lambda' _ _ _       -> "lambda"
     Function' _ _ _ _   -> "function"
     List' _             -> "list"
+    Constructer' _ _    -> "constructer"
+    Getter _         -> "getter"
+    Object name _       -> name
