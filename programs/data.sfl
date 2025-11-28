@@ -22,8 +22,8 @@ print age samir;
 print area my_circle;
 
 area shape = match shape with
-    case Circle radius          -> radius * radius * 3.14
-    case Rectangle width height -> width * height
+    case Circle r          -> r * r * 3.14
+    case Rectangle w h -> w * h
     else                        -> -1;
 
 data Shape = Circle radius | Rectangle width height | Triangle base height;

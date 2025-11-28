@@ -12,7 +12,7 @@ data Value =
     | List' [Value]
     | Lambda' [String] Expr Environment
     | Function' String [String] Expr Environment
-    | Constructer' String [String]
+    | Constructer' String [String] Map
     | Getter String
     | Object String Map
 
@@ -22,7 +22,7 @@ instance Show Value where
     show (String' s)             = show s
     show (Lambda' _ _ _ )        = "lambda"
     show (Function' name _ _ _ ) = "function " ++ name
-    show (Constructer' name _)   = "constructer " ++ name
+    show (Constructer' name _ _)   = "constructer " ++ name
     show (Getter name)           = "getter " ++ name
     show (List' elements)        = show elements
     show (Object name obj_map)   = name ++ " object {\n" ++ (concat (map (\(key,value) -> "\t" ++ key ++ " : " ++ (show value) ++ "\n") obj_map)) ++ "}"
@@ -91,7 +91,7 @@ global top_level = Global (constructers_and_getters_map ++ functions_map ++ enum
         constructers_and_getters_map = getters_map ++ constructers_map
             where
                 constructers_map :: Map
-                constructers_map = map (\(Constructer name parameters) -> (name, Constructer' name parameters)) constructers
+                constructers_map = map (\(Constructer name parameters) -> (name, Constructer' name parameters [])) constructers
 
                 getters_map :: Map
                 getters_map = map (\parameter -> (parameter, Getter parameter)) attr_names

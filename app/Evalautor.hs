@@ -120,20 +120,29 @@ eval (Binary pos opp e1 e2) envi
             f <- eval e1 envi
             x <- eval e2 envi
             case f of
-                (Lambda'        parameters body closure) -> helper x (Lambda')        parameters body closure (length parameters)
-                (Function' name parameters body closure) -> helper x (Function' name) parameters body closure (length parameters)
+                (Lambda'        parameters body closure) -> funcs_and_lambdas x (Lambda')        parameters body closure (length parameters)
+                (Function' name parameters body closure) -> funcs_and_lambdas x (Function' name) parameters body closure (length parameters)
+                (Constructer' name parameters obj_map)   -> constructer x name parameters obj_map
+                (Getter _)                               -> eval (Call pos e1 [e2]) envi
                 _ -> Left (Error' ("Left '><' opperand must be a callable and not of type " ++ (type_of f)) pos)
  
             where
-                helper :: Value
+                funcs_and_lambdas :: Value
                         -> ([String] -> Expr -> Environment -> Value)
                         -> [String] -> Expr -> Environment -> Int -> Either Error' Value
-                helper x callable parameters body closure arity =
+                funcs_and_lambdas x callable parameters body closure arity =
                     if arity == 1
                         then eval (Call pos e1 [e2]) envi
                         else
                             let closure' = Environment ((head parameters, x) : []) closure
                             in Right (callable (tail parameters) body closure')
+                
+                constructer :: Value -> String -> [String] -> Map -> Either Error' Value
+                constructer x name parameters obj_map = case parameters of
+                    [attr_name]      -> Right (Object name (obj_map ++ [(attr_name, x)]))
+                    (attr_name:rest) -> Right (Constructer' name rest (obj_map ++ [(attr_name, x)]))
+                    []               -> Left (Error' "This should never run" pos)
+                        
 
         bind' :: Either Error' Value
         bind' = undefined
@@ -207,11 +216,11 @@ eval (Lambda parameters body) envi = Right (Lambda' parameters body envi)
 eval (Call pos callee args) envi = do
             callee' <- eval callee envi
             case callee' of
-                (Function' _ parameters body closure) -> funcs_and_lambdas parameters body closure (length parameters)
-                (Lambda'     parameters body closure) -> funcs_and_lambdas parameters body closure (length parameters)
-                (Constructer' name parameters)        -> constructer name parameters
-                (Getter name)                         -> getter name
-                _                                     -> Left (Error' ("Cannot call: " ++ (type_of callee')) pos)
+                (Function' _ parameters body closure)  -> funcs_and_lambdas parameters body closure (length parameters)
+                (Lambda'     parameters body closure)  -> funcs_and_lambdas parameters body closure (length parameters)
+                (Constructer' name parameters obj_map) -> constructer name parameters obj_map
+                (Getter name)                          -> getter name
+                _                                      -> Left (Error' ("Cannot call: " ++ (type_of callee')) pos)
             where
 
                 check_arity :: Int -> Int -> Either Error' ()
@@ -226,12 +235,13 @@ eval (Call pos callee args) envi = do
                     result <- eval body envi'
                     return result
 
-                constructer :: String -> [String] -> Either Error' Value
-                constructer name parameters = do
+                constructer :: String -> [String] -> Map -> Either Error' Value
+                constructer name parameters obj_map = do
                     check_arity (length parameters) (length args)
                     args' <- sequence (map ((flip eval) envi) args)
-                    let obj_map = zip parameters args'
-                    return (Object name obj_map)
+                    let obj_map' = zip parameters args'
+                    let obj_map'' = obj_map ++ obj_map'
+                    return (Object name obj_map'')
 
                 getter :: String -> Either Error' Value
                 getter name = do
@@ -290,6 +300,6 @@ type_of v = case v of
     Lambda' _ _ _       -> "lambda"
     Function' _ _ _ _   -> "function"
     List' _             -> "list"
-    Constructer' _ _    -> "constructer"
-    Getter _         -> "getter"
+    Constructer' _ _ _  -> "constructer"
+    Getter _            -> "getter"
     Object name _       -> name
