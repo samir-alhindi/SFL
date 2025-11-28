@@ -1,0 +1,16 @@
+
+
+data Person = Person name age;
+
+samir = Person "Samir" 20;
+
+print samir;
+
+data Name = Name name;
+
+rayyan = Person (Name "Rayyan") 15;
+
+print rayyan;
+
+print samir == rayyan;
+print rayyan == rayyan;
