@@ -1,9 +1,10 @@
 
 is_empty list = if list == [] then true else false;
 
-len list = if is_empty list
-    then 0
-    else 1 + len (#list);
+len list = match list with
+    case []     -> 0
+    case (x:xs) -> 1 + (len xs)
+    else        -> "Please pass in a list";
 
 last list = match list with
     case [] -> "Error !"
@@ -11,9 +12,10 @@ last list = match list with
                 then !list
                 else last (#list);
 
-map func list = if is_empty list
-    then []
-    else func (!list) : map func (#list);
+map f list = match list with
+    case []     -> []
+    case (x:xs) -> (f x) : (map f xs)
+    else        -> "Please pass in a list";
 
 filter predicate list = if is_empty list
     then []

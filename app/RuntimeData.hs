@@ -70,19 +70,19 @@ extend_envi' :: Environment -> [(String, Value)] -> Environment
 extend_envi' (Global map') pairs = Global (pairs ++ map')
 extend_envi' (Environment map' outer)  pairs = Environment (pairs ++ map') outer
 
-global :: [TopLevel] -> Environment
-global top_level = Global (constructers_and_getters_map ++ functions_map ++ enum_map)
+global :: [Declaration] -> Environment
+global declerations = Global (constructers_and_getters_map ++ functions_map ++ enum_map)
     where
         functions_map :: Map
-        functions_map = map (\(name, f) -> (name, f (global top_level))) (almost_functions)
+        functions_map = map (\(name, f) -> (name, f (global declerations))) (almost_functions)
             where
                 almost_functions :: [(String, (Environment -> Value))]
-                almost_functions = map partial_eval (declerations top_level)
+                almost_functions = map partial_eval (func_declerations declerations)
                     where
-                        declerations :: [TopLevel] -> [Function]
-                        declerations (TL_Function f : rest) = f : (declerations rest)
-                        declerations []             = []
-                        declerations (_:rest) = declerations rest
+                        func_declerations :: [Declaration] -> [Function]
+                        func_declerations (TL_Function f : rest) = f : (func_declerations rest)
+                        func_declerations []             = []
+                        func_declerations (_:rest) = func_declerations rest
                         
                         partial_eval :: Function -> (String, (Environment -> Value))
                         partial_eval (Function name parameter body) = (name, Function' name parameter body)
@@ -100,17 +100,17 @@ global top_level = Global (constructers_and_getters_map ++ functions_map ++ enum
                         attr_names = concat (map (\(Constructer _ parameters) -> parameters) constructers)
 
                 constructers :: [Constructer]
-                constructers = concat (helper top_level)
+                constructers = concat (helper declerations)
                     where
-                        helper :: [TopLevel] -> [[Constructer]]
+                        helper :: [Declaration] -> [[Constructer]]
                         helper [] = []
                         helper (TL_Class (Class _ constructers' _) : rest) = constructers' : (helper rest)
                         helper (_:rest) = helper rest
 
         enum_map :: Map
-        enum_map = zip (names top_level) (map Number' (map (fromIntegral) ([0..999] :: [Integer])))
+        enum_map = zip (names declerations) (map Number' (map (fromIntegral) ([0..999] :: [Integer])))
                 where
-                    names :: [TopLevel] -> [String]
+                    names :: [Declaration] -> [String]
                     names [] = []
                     names (TL_Enumeration (Enumeration _ e _) : rest) = e ++ (names rest)
                     names (_:rest) = names rest

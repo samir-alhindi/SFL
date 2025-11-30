@@ -6,28 +6,22 @@ import Text.Parsec.Expr
 import Text.Parsec.Token
 import Text.Parsec.Language
 import Data.Functor.Identity
-
 import AST
- 
-program :: Parser [TopLevel]
-program = top_level_sequence <* eof <?> "program"
 
-top_level_sequence :: Parser [TopLevel]
-top_level_sequence = many1 top_level
+program :: Parser [Declaration]
+program = (many1 decleration) <* eof <?> "program"
 
-top_level :: Parser TopLevel
-top_level =
+decleration :: Parser Declaration
+decleration =
     try (TL_Stmt <$> statement) <|>
     try (TL_Function <$> function) <|>
     try (TL_Class <$> class') <|>
-    try (TL_Enumeration <$> enum)
+    try (TL_Enumeration <$> enum) <|>
+    try (TL_Import <$> import')
     
 statement :: Parser Stmt
 statement =
     try print'
-    <|> try if_else
-    <|> try if'
-    <|> try block
     <?> "statement"
 
 class' :: Parser Class
@@ -65,8 +59,12 @@ enum = do
     _ <- m_semi
     return (Enumeration name enumerations pos)
 
-block :: Parser Stmt
-block = Block <$> (m_braces (many statement))
+import' :: Parser Import
+import' = do
+    m_reserved "import"
+    path <- m_stringLiteral
+    return (Import path)
+
 
 print' :: Parser Stmt
 print' = do
@@ -75,33 +73,12 @@ print' = do
     _ <- m_semi
     return (Print expre) <?> "print"
 
-if_else :: Parser Stmt
-if_else = do
-    m_reserved "if"
-    pos <- getPosition
-    condition <- expression
-    m_reserved "then"
-    then_branch <- statement
-    m_reserved "else"
-    else_branch <- statement
-    return (IfElse pos condition then_branch else_branch)
-
-if' :: Parser Stmt
-if' = do
-    m_reserved "if"
-    pos <- getPosition
-    condition <- expression
-    m_reserved "then"
-    then_branch <- statement
-    return (If pos condition then_branch)
-
-
 def :: LanguageDef ()
 def = emptyDef {
     opStart = oneOf "+-*/><=!:#%",
     opLetter = oneOf "<>=+",
     reservedOpNames = ["+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!=", "and", "or", "not", "=", "><", "\\", "->", "!", "#", ":", "%", "|", "++", ">>="],
-    reservedNames  = ["true", "false", "and", "or", "not", "if", "then", "else", "let", "in", "match", "case", "with", "data", "enum"],
+    reservedNames  = ["true", "false", "and", "or", "not", "if", "then", "else", "let", "in", "match", "case", "with", "data", "enum", "import"],
     commentLine = "--",
     commentStart = "{-",
     commentEnd = "-}"
@@ -269,18 +246,31 @@ match = do
         pattern' :: Parser (Pattern, Expr)
         pattern' = do
             m_reserved "case"
-            pattern'' <- (try (DestructerPattern <$> destructer) <|>(ExprPattern <$> expression))
+            pattern'' <- patterns
             m_reservedOp "->"
             result <- expression
             return (pattern'', result)
             where
-                destructer :: Parser Destructer
+                
+                patterns :: Parser Pattern
+                patterns =
+                    try (m_parens destructer <|> destructer) <|>
+                    try (m_parens list_pattern <|> list_pattern) <|>
+                    (ExprPattern <$> expression)
+
+                destructer :: Parser Pattern
                 destructer = do
                     constructer_name <- m_identifier
                     attributes <- many1 m_identifier
-                    return (Destructer constructer_name attributes)
+                    DestructerPattern <$> (return (Destructer constructer_name attributes))
+                
+                list_pattern :: Parser Pattern
+                list_pattern = do
+                    x <- m_identifier
+                    m_reservedOp ":"
+                    xs <- m_identifier
+                    ListPattern <$> (return (x, xs))
 
 
-
-my_parse :: String -> Either ParseError [TopLevel]
+my_parse :: String -> Either ParseError [Declaration]
 my_parse source = parse (m_whiteSpace >> program) "" source

@@ -1,0 +1,3 @@
+import "programs\\native_functions.sfl"
+
+print map (\n -> n * n) [1, 2, 3, 4, 5];

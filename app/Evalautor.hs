@@ -5,45 +5,20 @@ import RuntimeData
 import Text.Parsec
 import Data.Fixed (mod')
 
-exec_program :: [TopLevel] -> Either Error' (IO ())
-exec_program program = helper program (global program)
-        where
-            helper :: [TopLevel] -> Environment -> Either Error' (IO ())
-            helper [] _ = Right (return ())
-            helper (TL_Stmt stmt:rest) envi = do
-                (envi', io) <- exec stmt envi
-                io'         <- helper rest envi'
-                return (io >> io')
-            helper (_:rest) envi = helper rest envi
+exec_program :: [Declaration] -> [Declaration] -> Either Error' [Value]
+exec_program program' imports =
+    let global_envi = global (program' ++ imports) in
+    let statements' = statements program' in
+    mapM (`exec` global_envi) statements'
 
-exec ::  Stmt -> Environment -> Either Error' (Environment, IO())
-exec (Print expr) envi = do
-    result <- eval expr envi
-    return (envi, print result)
-
-exec (If pos condition then_branch) envi = do
-    condition' <- is_bool envi condition pos
-    if condition'
-        then exec then_branch envi
-        else Right (envi, return ())
-
-exec (IfElse pos condition then_branch else_branch) envi = do
-    condition' <- is_bool envi condition pos
-    if condition'
-        then exec then_branch envi
-        else exec else_branch envi
-
-exec (Block stmts) envi = do
-    let envi' = Environment [] envi
-    (_, io) <- exec_block stmts envi'
-    Right (envi, io)
     where
-        exec_block :: [Stmt] -> Environment -> Either Error' (Environment, IO())
-        exec_block [] envi'' = Right (envi'', return ())
-        exec_block (stmt:rest) envi'' = do
-            (envi''', io) <- exec stmt envi''
-            (_, io')    <- exec_block rest envi'''
-            Right (envi'', (io >> io'))
+        statements :: [Declaration] -> [Stmt]
+        statements [] = []
+        statements (TL_Stmt stmt:rest) = stmt : (statements rest)
+        statements (_:xs) = statements xs
+
+exec ::  Stmt -> Environment -> Either Error' Value
+exec (Print expr) envi = eval expr envi
 
 eval :: Expr -> Environment -> Either Error' Value
 eval (Ternary pos condition then_branch else_branch) envi = do
@@ -200,9 +175,9 @@ eval (Unary pos opp e) envi = do
             _ -> Left (Error' ("'not' opperand must be a boolean and not of type "++(type_of v)) pos)
         Head ->
             case v of
-                (List' list) -> if length list == 0
+                (List' elements) -> if length elements == 0
                     then Left  (Error' "cannot get head of empty list" pos)
-                    else Right (head list)
+                    else Right (head elements)
                 _ -> Left (Error' ("'!' opperand must be a list and not of type "++(type_of v)) pos)
 
         Tail ->
@@ -277,6 +252,16 @@ eval (Match _ expr patterns wild_card) envi = (eval expr envi) >>= (\ value -> (
             where
                 branch_envi :: Environment
                 branch_envi = Environment (zip parameters (map (\(_,value') -> value') obj_map)) envi
+
+
+        check_patterns value@(List' elements) (((ListPattern (x,xs)), branch):rest) =
+            case elements of
+                (x':xs') -> eval branch (branch_envi (x',xs'))
+                _        -> check_patterns value rest
+            
+                where
+                    branch_envi :: (Value, [Value]) -> Environment
+                    branch_envi (x', xs') = Environment ([(x,x'),(xs, List' xs')]) envi
 
         check_patterns value ((ExprPattern pattern', branch) : rest) = do
             result <- eval pattern' envi

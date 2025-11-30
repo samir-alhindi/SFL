@@ -3,18 +3,14 @@ module AST where
 
 import Text.Parsec
 
-data TopLevel =
+data Declaration =
     TL_Stmt Stmt
   | TL_Function Function
   | TL_Class Class 
   | TL_Enumeration Enumeration
+  | TL_Import Import
 
-data Stmt =
-      Print Expr
-    | If SourcePos Expr Stmt
-    | IfElse SourcePos Expr Stmt Stmt
-    | Block [Stmt]
-    deriving Show
+data Stmt = Print Expr deriving Show
 
 data Class = Class String [Constructer] SourcePos
 
@@ -23,6 +19,8 @@ data Constructer = Constructer String [String] deriving (Show, Eq)
 data Function = Function String [String] Expr
 
 data Enumeration = Enumeration String [String] SourcePos
+
+data Import = Import String
 
 data Expr =
       Number Double
@@ -42,6 +40,7 @@ data Expr =
 data Pattern =
     ExprPattern Expr
   | DestructerPattern Destructer
+  | ListPattern (String, String)
   deriving (Show, Eq)
 
 data Destructer = Destructer String [String] deriving (Show, Eq)

@@ -23,7 +23,7 @@ print area my_circle;
 
 area shape = match shape with
     case Circle r          -> r * r * 3.14
-    case Rectangle w h -> w * h
+    case Rectangle w height -> w * height
     else                        -> -1;
 
 data Shape = Circle radius | Rectangle width height | Triangle base height;

@@ -1,31 +1,5 @@
 
--- Imports:
-map func list = if list == []
-    then []
-    else func (!list) : map func (#list);
-
-is_empty list = if list == [] then true else false;
-
-len list = if is_empty list
-    then 0
-    else 1 + len (#list);
-
-filter predicate list = if is_empty list
-    then []
-    else
-        if predicate (!list)
-            then !list : filter predicate (#list)
-            else filter predicate (#list);
-
-last list = match len list with
-                case 0 -> "Cannot get last element of empty list"
-                case 1 -> !list
-                else   -> last (#list);
-
-zip l1 l2 = if is_empty l1 or is_empty l2
-                then []
-                else [!l1, !l2] : (zip (#l1) (#l2));
--- End Imports.
+import "programs\\native_functions.sfl"
 
 data Expre =
       Number n
@@ -95,7 +69,6 @@ eval envi expre = match expre with
                                 else -> "Can only apply lambdas."
 
     else                    -> "is Inavlid expression type.";
-
 
 
 tests = [
