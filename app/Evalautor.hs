@@ -25,7 +25,7 @@ eval (Ternary pos condition then_branch else_branch) envi = do
     condition' <- is_bool envi condition pos
     if condition' then eval then_branch envi else eval else_branch envi
 
-eval (StringExpr str) _ = Right (String' str)
+eval (Character c) _ = Right (Character' c)
 eval (Number n) _ = Right (Number' n)
 eval (Boolean b) _ = Right (Boolean' b)
 eval (Name pos name) envi = (find envi name pos) >>= \value -> case value of
@@ -87,7 +87,6 @@ eval (Binary pos opp e1 e2) envi
             e2' <- eval e2 envi
             case (e1', e2') of
                 (Number' n1, Number' n2) -> return (Number' (n1 + n2))
-                (String' s1, String' s2) -> return (String' (s1 ++ s2))
                 _ -> Left (Error'("cannot add value of types "++(type_of e1')++" and "++(type_of e2')) pos)
     
         curry' :: Either Error' Value
@@ -279,12 +278,13 @@ is_bool envi expr pos = case eval expr envi of
 
 type_of :: Value -> String
 type_of v = case v of
-    String' _           -> "string"
-    Number' _           -> "number"
-    Boolean'   _        -> "boolean"
-    Lambda' _ _ _       -> "lambda"
-    Function' _ _ _ _   -> "function"
-    List' _             -> "list"
-    Constructer' _ _ _  -> "constructer"
-    Getter _            -> "getter"
-    Object name _       -> name
+    Character' _           -> "character"
+    Number' _              -> "number"
+    Boolean'   _           -> "boolean"
+    Lambda' _ _ _          -> "lambda"
+    Function' _ _ _ _      -> "function"
+    NativeFunction _ _ _ _ -> "native function"
+    List' _                -> "list"
+    Constructer' _ _ _     -> "constructer"
+    Getter _               -> "getter"
+    Object name _          -> name

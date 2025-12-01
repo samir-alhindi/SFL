@@ -29,7 +29,7 @@ data Expr =
     | LetExpr String Expr Expr
     | Binary SourcePos BinOpp Expr Expr
     | Unary SourcePos UnaryOpp Expr
-    | StringExpr String
+    | Character Char
     | Ternary SourcePos Expr Expr Expr
     | Lambda [String] Expr
     | Call SourcePos Expr [Expr]

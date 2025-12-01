@@ -8,34 +8,48 @@ import Data.List (isSuffixOf)
 data Value = 
       Number' {get_num :: Double}
     | Boolean' {get_bool :: Bool}
-    | String' {get_str :: String}
+    | Character' {get_char :: Char}
     | List' [Value]
     | Lambda' [String] Expr Environment
     | Function' String [String] Expr Environment
+    | NativeFunction String [String] (Environment -> Value) Environment
     | Constructer' String [String] Map
     | Getter String
     | Object String Map
 
 instance Show Value where
-    show (Number' n)             = if ".0" `isSuffixOf` (show n) then show (floor n :: Integer) else show n
-    show (Boolean' b  )          = show b
-    show (String' s)             = show s
-    show (Lambda' _ _ _ )        = "lambda"
-    show (Function' name _ _ _ ) = "function " ++ name
-    show (Constructer' name _ _)   = "constructer " ++ name
-    show (Getter name)           = "getter " ++ name
-    show (List' elements)        = show elements
-    show (Object name obj_map)   = name ++ " object {\n" ++ (concat (map (\(key,value) -> "\t" ++ key ++ " : " ++ (show value) ++ "\n") obj_map)) ++ "}"
+    show (Number' n)                 = if ".0" `isSuffixOf` (show n) then show (floor n :: Integer) else show n
+    show (Boolean' b  )              = show b
+    show (Character' c)              = show c
+    show (Lambda' _ _ _ )            = "lambda"
+    show (Function' name _ _ _ )     = "function " ++ name
+    show (NativeFunction name _ _ _) = "native function" ++ name
+    show (Constructer' name _ _)     = "constructer " ++ name
+    show (Getter name)               = "getter " ++ name
+    show (List' elements)            = show_list elements
+    show (Object name obj_map)       = name ++ " object {\n" ++ (concat (map (\(key,value) -> "\t" ++ key ++ " : " ++ (show value) ++ "\n") obj_map)) ++ "}"
+
+show_list :: [Value] -> String
+show_list elements = if null elements
+    then "[]"
+    else
+        case is_string elements of
+            Nothing  -> show elements
+            Just str -> show str
+            where
+                is_string :: [Value] -> Maybe String
+                is_string [] = Just []
+                is_string ((Character' c):rest) = (is_string rest) >>= (\str -> Just (c:str))
+                is_string _ = Nothing
 
 instance Eq Value where
     (Number' n1)  == (Number' n2)                      = n1 == n2
     (Boolean' b1) == (Boolean' b2)                     = b1 == b2
-    (String' s1)  == (String' s2)                      = s1 == s2
+    (Character' c1)  == (Character' c2)                = c1 == c2
     (List' l1)    == (List' l2)                        = l1 == l2
     (Object name1 obj_map1) == (Object name2 obj_map2) = (name1 == name2) && (obj_map1 == obj_map2)
     _ == _                                             = False
     
-
 data Error' = Error' String SourcePos
 
 instance Show Error' where
@@ -71,7 +85,7 @@ extend_envi' (Global map') pairs = Global (pairs ++ map')
 extend_envi' (Environment map' outer)  pairs = Environment (pairs ++ map') outer
 
 global :: [Declaration] -> Environment
-global declerations = Global (constructers_and_getters_map ++ functions_map ++ enum_map)
+global declerations = Global (constructers_and_getters_map ++ functions_map ++ enum_map ++ natives_map)
     where
         functions_map :: Map
         functions_map = map (\(name, f) -> (name, f (global declerations))) (almost_functions)
@@ -114,3 +128,6 @@ global declerations = Global (constructers_and_getters_map ++ functions_map ++ e
                     names [] = []
                     names (TL_Enumeration (Enumeration _ e _) : rest) = e ++ (names rest)
                     names (_:rest) = names rest
+        
+        natives_map :: Map
+        natives_map = []

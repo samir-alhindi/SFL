@@ -6,7 +6,7 @@ one = [1];
 mixed = ["Samir", true, -12.543];
 expresions = [
     1 + 1 * 2,
-    "Hello " + "world",
+    "Hello " ++ "world",
     true and false,
     (\n -> n * 2) 5
 ];
@@ -46,4 +46,4 @@ map func list = if is_empty list
     else ((func (!list)) : (map func (#list)));
 
 print map (\ n -> n * 2) [1, 2, 3, 4, 5];
-print map (\ s -> s + " !!!") ["Samir", "Rayyan", "Maria"];
+print map (\ s -> s ++ " !!!") ["Samir", "Rayyan", "Maria"];

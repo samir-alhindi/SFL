@@ -9,7 +9,7 @@ show_day day = match day with
     case Monday -> "Monday"
     else        -> "Please enter a valid Weekday";
 
-print "Today is: " + (show_day today);
+print "Today is: " ++ (show_day today);
 
 print today;
 print Sunday;

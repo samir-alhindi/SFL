@@ -94,6 +94,7 @@ m_identifier     :: Parser String
 m_whiteSpace     :: Parser ()
 m_semi           :: Parser String
 m_comma          :: Parser String
+m_charLiteral    :: Parser Char
 m_stringLiteral  :: Parser String
 TokenParser { 
     naturalOrFloat  = m_naturalOrFloat,
@@ -106,6 +107,7 @@ TokenParser {
     whiteSpace = m_whiteSpace,
     semi       = m_semi,
     comma      = m_comma, 
+    charLiteral = m_charLiteral,
     stringLiteral  = m_stringLiteral
 } = makeTokenParser def
 
@@ -120,7 +122,8 @@ atom = m_parens expression
     <|> try list
     <|> try number
     <|> try ternary
-    <|> try (StringExpr <$> m_stringLiteral)
+    <|> try string''
+    <|> try (Character <$> m_charLiteral)
     <|> try boolean
     <|> try identifier'
     <|> try lambda
@@ -215,6 +218,12 @@ ternary = do
     m_reserved "else"
     else_branch <- expression
     return (Ternary pos condition then_branch else_branch)
+
+string'' :: Parser Expr
+string'' = do
+    str <- m_stringLiteral
+    let elements = map Character str
+    return (List elements)
 
 list :: Parser Expr
 list = do

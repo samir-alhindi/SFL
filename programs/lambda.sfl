@@ -14,7 +14,7 @@ print ((product 4) 5);
 
 print ((product 4) 5) + sqr 4;
 
-greet = \ name -> "Hello: " + name;
+greet = \ name -> "Hello: " ++ name;
 print greet "Samir";
 print greet "Rayyan";
 
