@@ -4,6 +4,7 @@ import AST
 import Text.Parsec
 import Text.Printf
 import Data.List (isSuffixOf)
+import Data.Char (toUpper)
 
 data Value = 
       Number' {get_num :: Double}
@@ -12,7 +13,7 @@ data Value =
     | List' [Value]
     | Lambda' [String] Expr Environment
     | Function' String [String] Expr Environment
-    | NativeFunction String [String] (Environment -> Value) Environment
+    | NativeFunction String [String] (Environment -> SourcePos -> Either Error' Value) Environment
     | Constructer' String [String] Map
     | Getter String
     | Object String Map
@@ -23,7 +24,7 @@ instance Show Value where
     show (Character' c)              = show c
     show (Lambda' _ _ _ )            = "lambda"
     show (Function' name _ _ _ )     = "function " ++ name
-    show (NativeFunction name _ _ _) = "native function" ++ name
+    show (NativeFunction name _ _ _) = "native function " ++ name
     show (Constructer' name _ _)     = "constructer " ++ name
     show (Getter name)               = "getter " ++ name
     show (List' elements)            = show_list elements
@@ -41,6 +42,19 @@ show_list elements = if null elements
                 is_string [] = Just []
                 is_string ((Character' c):rest) = (is_string rest) >>= (\str -> Just (c:str))
                 is_string _ = Nothing
+
+type_of :: Value -> String
+type_of v = case v of
+    Character' _           -> "character"
+    Number' _              -> "number"
+    Boolean'   _           -> "boolean"
+    Lambda' _ _ _          -> "lambda"
+    Function' _ _ _ _      -> "function"
+    NativeFunction _ _ _ _ -> "native function"
+    List' _                -> "list"
+    Constructer' _ _ _     -> "constructer"
+    Getter _               -> "getter"
+    Object name _          -> name
 
 instance Eq Value where
     (Number' n1)  == (Number' n2)                      = n1 == n2
@@ -130,4 +144,11 @@ global declerations = Global (constructers_and_getters_map ++ functions_map ++ e
                     names (_:rest) = names rest
         
         natives_map :: Map
-        natives_map = []
+        natives_map = [("to_upper", NativeFunction "to_upper" ["char"] to_upper (global declerations))]
+
+            where
+                to_upper :: Environment -> SourcePos -> Either Error' Value
+                to_upper envi pos = case find envi "char" pos of
+                    Left err             -> Left err
+                    Right (Character' c) -> Right (Character' (toUpper c))
+                    Right val            -> Left (Error' ("to_upper argument must be a character and not of type: " ++ (type_of val)) pos)

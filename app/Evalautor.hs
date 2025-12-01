@@ -190,11 +190,12 @@ eval (Lambda parameters body) envi = Right (Lambda' parameters body envi)
 eval (Call pos callee args) envi = do
             callee' <- eval callee envi
             case callee' of
-                (Function' _ parameters body closure)  -> funcs_and_lambdas parameters body closure (length parameters)
-                (Lambda'     parameters body closure)  -> funcs_and_lambdas parameters body closure (length parameters)
-                (Constructer' name parameters obj_map) -> constructer name parameters obj_map
-                (Getter name)                          -> getter name
-                _                                      -> Left (Error' ("Cannot call: " ++ (type_of callee')) pos)
+                (Function' _ parameters body closure)   -> funcs_and_lambdas parameters body closure (length parameters)
+                (Lambda'     parameters body closure)   -> funcs_and_lambdas parameters body closure (length parameters)
+                (Constructer' name parameters obj_map)  -> constructer name parameters obj_map
+                (Getter name)                           -> getter name
+                (NativeFunction _ parameters f closure) -> native parameters f closure
+                _                                       -> Left (Error' ("Cannot call: " ++ (type_of callee')) pos)
             where
 
                 check_arity :: Int -> Int -> Either Error' ()
@@ -228,7 +229,14 @@ eval (Call pos callee args) envi = do
                         find_atribute :: String -> Map -> Either Error' Value
                         find_atribute name' [] = Left (Error' ("attribute "++name'++" not found in object") pos)
                         find_atribute name' ((key, value):xs) = if name' == key then Right value else find_atribute name' xs
-
+                
+                native :: [String] -> (Environment -> SourcePos -> Either Error' Value) -> Environment -> Either Error' Value
+                native parameters f closure = do
+                    check_arity (length parameters) (length args)
+                    args' <- mapM ((flip eval) envi) args
+                    let pairs = zip parameters args'
+                    let envi' = Environment pairs closure
+                    f envi' pos
 
 eval (LetExpr name init' body) envi = do
     value <- eval init' envi
@@ -275,16 +283,3 @@ is_bool envi expr pos = case eval expr envi of
     Right (Boolean' b) -> Right b
     Left err -> Left err
     _         -> Left (Error' "condition must be a boolean value." pos)
-
-type_of :: Value -> String
-type_of v = case v of
-    Character' _           -> "character"
-    Number' _              -> "number"
-    Boolean'   _           -> "boolean"
-    Lambda' _ _ _          -> "lambda"
-    Function' _ _ _ _      -> "function"
-    NativeFunction _ _ _ _ -> "native function"
-    List' _                -> "list"
-    Constructer' _ _ _     -> "constructer"
-    Getter _               -> "getter"
-    Object name _          -> name
