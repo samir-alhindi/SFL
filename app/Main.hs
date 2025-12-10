@@ -34,7 +34,4 @@ main = do
                 import_paths (_:xs) = import_paths xs
                 
                 parse_imports :: String -> Either ParseError [Declaration]
-                parse_imports source = do
-                    case my_parse source of
-                        Left err       -> Left err
-                        Right program' -> Right program'
+                parse_imports source = my_parse source

@@ -4,7 +4,7 @@ import AST
 import Text.Parsec
 import Text.Printf
 import Data.List (isSuffixOf)
-import Data.Char (toUpper)
+import Data.Char (toUpper, isDigit)
 
 data Value = 
       Number' {get_num :: Double}
@@ -70,6 +70,8 @@ instance Show Error' where
     show (Error' err_log pos) =
         printf "Error at position (%d,%d): %s" (sourceLine pos) (sourceColumn pos) err_log
 
+to_SFL_string :: String -> Value
+to_SFL_string str = List' (map Character' str)
 
 type Map = [(String, Value)]
 
@@ -144,7 +146,12 @@ global declerations = Global (constructers_and_getters_map ++ functions_map ++ e
                     names (_:rest) = names rest
         
         natives_map :: Map
-        natives_map = [("to_upper", NativeFunction "to_upper" ["char"] to_upper (global declerations))]
+        natives_map = [
+            ("to_upper", NativeFunction "to_upper" ["char"] to_upper (global declerations)),
+            ("is_digit", NativeFunction "is_digit" ["char"] is_digit (global declerations)),
+            ("show",     NativeFunction "show"     ["value"] show'   (global declerations)),
+            ("type_of",  NativeFunction "type_of"  ["value"] type_of'(global declerations))
+            ]
 
             where
                 to_upper :: Environment -> SourcePos -> Either Error' Value
@@ -152,3 +159,15 @@ global declerations = Global (constructers_and_getters_map ++ functions_map ++ e
                     Left err             -> Left err
                     Right (Character' c) -> Right (Character' (toUpper c))
                     Right val            -> Left (Error' ("to_upper argument must be a character and not of type: " ++ (type_of val)) pos)
+                
+                is_digit :: Environment -> SourcePos -> Either Error' Value
+                is_digit envi pos = case find envi "char" pos of
+                    Left err             -> Left err
+                    Right (Character' c) -> Right (Boolean' (isDigit c))
+                    Right val            -> Left (Error' ("is_digit argument must be a character and not of type: " ++ (type_of val)) pos)
+                
+                show' :: Environment -> SourcePos -> Either Error' Value
+                show' envi pos = (find envi "value" pos) >>= \ val -> Right (to_SFL_string (show val))
+
+                type_of' :: Environment -> SourcePos -> Either Error' Value
+                type_of' envi pos = (find envi "value" pos) >>= \ val -> Right (to_SFL_string (type_of val))

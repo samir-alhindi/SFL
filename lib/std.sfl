@@ -1,0 +1,127 @@
+
+
+is_empty list = (list == []);
+
+len list = match list with
+    case []     -> 0
+    case (x:xs) -> 1 + (len xs)
+    else        -> "Please pass in a list";
+
+last list = match list with
+    case []     -> "Can't get last element of empty list"
+    case (x:xs) -> if len list == 1
+                then x
+                else last (xs)
+    else        -> "Please pass in a list";
+
+map f list = match list with
+    case []     -> []
+    case (x:xs) -> (f x) : (map f xs)
+    else        -> "Please pass in a list";
+
+filter p list = match list with
+    case []     -> []
+    case (x:xs) -> if p x
+        then x : (filter p xs)
+        else filter p xs
+    else        -> "Please pass in a list";
+
+sum list = match list with
+    case []     -> 0
+    case (x:xs) -> 1 + (sum xs)
+    else        -> "Please pass in a list";
+
+fold f init list = match list with
+    case []     -> init
+    case (x:xs) -> f x (fold f init xs)
+    else        -> "Please pass in a list";
+
+sum     = fold >< (\x y -> x + y) >< 0; 
+product = fold >< (\x y -> x * y) >< 1;
+
+all p list = match list with
+    case []     -> true
+    case (x:xs) -> (p x) and (all p xs)
+    else        -> "Please pass in a list";
+
+some p list = match list with
+    case []     -> []
+    case (x:xs) -> (p x) or (some p xs)
+    else        -> "Please pass in a list";
+
+reverse list = match list with
+    case []     -> []
+    case (x:xs) -> (reverse xs) ++ [x]
+    else        -> "Please pass in a list";
+
+contains elem list = match list with
+    case []     -> false
+    case (x:xs) -> match x with
+                    case elem -> true
+                    else      -> contains xs elem
+    else        -> "Please pass in a list";
+
+take n list = match n with
+    case 0 -> []
+    else   -> match list with
+                case [] -> []
+                else    -> (!list) : (take (n-1) (#list));
+
+init list = take ((len list)- 1) list;
+
+take_last n list = match n with
+    case 0 -> []
+    else   -> match list with
+                case [] -> []
+                else    -> (take_last (n-1) (init list))  ++ [last list];
+
+drop n list = match n with
+    case 0 -> list
+    else   -> match list with
+                case [] -> []
+                else    -> drop (n-1) (#list);
+
+split list at = [take at list, take_last at list];
+
+zip l1 l2 = if is_empty l1 or is_empty l2
+                then []
+                else [!l1, !l2] : (zip (#l1) (#l2));
+
+concat list = if is_empty list
+                then []
+                else (!list) ++ (concat (#list));
+
+replicate n elem = if n <= 0
+                    then []
+                    else elem : (replicate (n-1) elem);
+
+last list = match len list with
+                case 0 -> "Cannot get last element of empty list"
+                case 1 -> !list
+                else   -> last (#list);
+
+data Either = Left val | Right val;
+
+bind either f = match either with
+                    case Right val -> f val
+                    else           -> either;
+
+sequence list = match list with
+    case []     -> Right []
+    case (m:ms) -> match m with
+                case Right v -> (sequence ms) >>= (\list -> Right (v:list))
+                case Left  v -> Left v
+                else         -> Left ("Please enter a list of monads for sequence")
+    else -> Left ("Please enter a list for sequence");
+
+mapM f list = sequence (map f list);
+
+data Pair = Pair key value;
+
+-- find :: String -> [Pair a b] -> Either String b
+find name map = match map with
+    case []      -> Left (name ++ " not found in map")
+    case (p:ps) -> if key p == name
+        then Right (value p)
+        else find name ps
+    else -> Left "Please enter a map";

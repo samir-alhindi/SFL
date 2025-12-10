@@ -33,53 +33,62 @@ eval (Name pos name) envi = (find envi name pos) >>= \value -> case value of
     _                           -> Right value
 
 eval (Binary pos opp e1 e2) envi
-    | opp `elem` [Minus, Multiply, Divide, Mod] = binary_number
-    | opp `elem` [And, Or]                 = binary_boolean
-    | opp == Plus                          = plus
-    | opp == Curry                         = curry'
-    | opp == Bind                          = bind'
-    | opp == Cons                          = cons
-    | opp == Concat                        = concatenate
-    | otherwise                            = relational
+    | opp `elem` [Minus, Multiply] = binary_number
+    | opp `elem` [Divide, Mod]     = division
+    | opp `elem` [And, Or]         = binary_boolean
+    | opp == Plus                  = plus
+    | opp == Curry                 = curry'
+    | opp == Bind                  = bind'
+    | opp == Cons                  = cons
+    | opp == Concat                = concatenate
+    | otherwise                    = relational
     where
         binary_number :: Either Error' Value
         binary_number = do
             (n1, n2) <- check_number_opperands
-            Right $ Number' $ case opp of
-                Minus    -> n1 - n2
-                Multiply -> n1 * n2
-                Divide   -> n1 / n2
-                Mod      -> mod' n1 n2
-                _        -> -9999 -- This will never run.
+            case opp of
+                Minus    -> Right (Number'(n1 - n2))
+                Multiply -> Right (Number'(n1 * n2))
+                _        -> inavlid_opp
         
+        division :: Either Error' Value
+        division = do
+            (n1, n2) <- check_number_opperands
+            if n2 == 0.0
+                then Left (Error' "cannot divide by 0" pos)
+                else case opp of
+                    Divide -> Right (Number' (n1 / n2))
+                    Mod    -> Right (Number' (mod' n1 n2))
+                    _      -> inavlid_opp
+                    
         binary_boolean :: Either Error' Value
         binary_boolean = do
             (b1, b2) <- check_boolean_opperands
-            Right $ Boolean' $ case opp of
-                And -> b1 && b2
-                Or  -> b1 || b2
-                _   -> False -- This will never run.
+            case opp of
+                And -> Right (Boolean' (b1 && b2))
+                Or  -> Right (Boolean' (b1 || b2))
+                _   -> inavlid_opp
         
         relational :: Either Error' Value
         relational
             | opp `elem` [DoubleEquals, NotEquals] = do
                     n1 <- eval e1 envi
                     n2 <- eval e2 envi
-                    Right $ Boolean' $ case opp of
-                        DoubleEquals -> n1 == n2
-                        NotEquals    -> n1 /= n2
-                        _            -> False -- This will never run.
+                    case opp of
+                        DoubleEquals -> Right (Boolean' (n1 == n2))
+                        NotEquals    -> Right (Boolean' (n1 /= n2))
+                        _            -> inavlid_opp
 
             | opp `elem` [Greater, Less, GreaterEqual, LessEqual] = do
                 (n1, n2) <- check_number_opperands
-                Right $ Boolean' $ case opp of
-                    Less         -> n1 < n2
-                    Greater      -> n1 > n2
-                    GreaterEqual -> n1 >= n2
-                    LessEqual    -> n1 <= n2
-                    _            -> False -- This will never run.
+                case opp of
+                    Less         -> Right (Boolean' (n1 < n2))
+                    Greater      -> Right (Boolean' (n1 > n2))
+                    GreaterEqual -> Right (Boolean' (n1 >= n2))
+                    LessEqual    -> Right (Boolean' (n1 <= n2))
+                    _            -> inavlid_opp
 
-            | otherwise = Left (Error' "This will never run." pos)
+            | otherwise = inavlid_opp
 
         plus :: Either Error' Value
         plus = do
@@ -89,23 +98,28 @@ eval (Binary pos opp e1 e2) envi
                 (Number' n1, Number' n2) -> return (Number' (n1 + n2))
                 _ -> Left (Error'("cannot add value of types "++(type_of e1')++" and "++(type_of e2')) pos)
     
+
+        inavlid_opp :: Either Error' Value
+        inavlid_opp = Left (Error' ((show opp) ++ " is an invalid opperation") pos)
+
         curry' :: Either Error' Value
         curry' = do
             f <- eval e1 envi
             x <- eval e2 envi
             case f of
-                (Lambda'        parameters body closure) -> funcs_and_lambdas x (Lambda')        parameters body closure (length parameters)
-                (Function' name parameters body closure) -> funcs_and_lambdas x (Function' name) parameters body closure (length parameters)
-                (Constructer' name parameters obj_map)   -> constructer x name parameters obj_map
-                (Getter _)                               -> eval (Call pos e1 [e2]) envi
+                (Lambda'        parameters body closure)   -> funcs_and_lambdas x (Lambda')        parameters body closure
+                (Function' name parameters body closure)   -> funcs_and_lambdas x (Function' name) parameters body closure
+                (Constructer' name parameters obj_map)     -> constructer x name parameters obj_map
+                (Getter _)                                 -> eval (Call pos e1 [e2]) envi
+                --(NativeFunction name parameters f closure) -> natives name parameters f closure
                 _ -> Left (Error' ("Left '><' opperand must be a callable and not of type " ++ (type_of f)) pos)
  
             where
                 funcs_and_lambdas :: Value
                         -> ([String] -> Expr -> Environment -> Value)
-                        -> [String] -> Expr -> Environment -> Int -> Either Error' Value
-                funcs_and_lambdas x callable parameters body closure arity =
-                    if arity == 1
+                        -> [String] -> Expr -> Environment -> Either Error' Value
+                funcs_and_lambdas x callable parameters body closure =
+                    if (length parameters) == 1
                         then eval (Call pos e1 [e2]) envi
                         else
                             let closure' = Environment ((head parameters, x) : []) closure
@@ -119,7 +133,15 @@ eval (Binary pos opp e1 e2) envi
                         
 
         bind' :: Either Error' Value
-        bind' = undefined
+        bind' = do
+            v1  <- eval e1 envi
+            v2 <- eval e2 envi
+            case (v1, v2) of
+                (Object name [(_,value)], Lambda' [parameter] body closure) -> case name of
+                    "Left"  -> Right v1
+                    "Right" -> eval body (Environment [(parameter,value)] closure)
+                    _       -> Left (Error' ("invalid object for >>=") pos)
+                _ -> Left (Error' ("Inavlid '>>= opperators'") pos)
 
         cons :: Either Error' Value
         cons = do
@@ -190,8 +212,8 @@ eval (Lambda parameters body) envi = Right (Lambda' parameters body envi)
 eval (Call pos callee args) envi = do
             callee' <- eval callee envi
             case callee' of
-                (Function' _ parameters body closure)   -> funcs_and_lambdas parameters body closure (length parameters)
-                (Lambda'     parameters body closure)   -> funcs_and_lambdas parameters body closure (length parameters)
+                (Function' _ parameters body closure)   -> funcs_and_lambdas parameters body closure
+                (Lambda'     parameters body closure)   -> funcs_and_lambdas parameters body closure
                 (Constructer' name parameters obj_map)  -> constructer name parameters obj_map
                 (Getter name)                           -> getter name
                 (NativeFunction _ parameters f closure) -> native parameters f closure
@@ -201,22 +223,25 @@ eval (Call pos callee args) envi = do
                 check_arity :: Int -> Int -> Either Error' ()
                 check_arity expected_arity actual_arity = if expected_arity == actual_arity then Right () else Left (Error' ("Exptected an arity of " ++ (show expected_arity) ++ " but got " ++ (show actual_arity)) pos)
 
-                funcs_and_lambdas :: [String] -> Expr -> Environment -> Int -> Either Error' Value
-                funcs_and_lambdas parameters body closure arity  = do
-                    check_arity arity (length args)
-                    args' <- sequence (map ((flip eval) envi) args)
+                eval_args :: [String] -> Either Error' Map
+                eval_args parameters = do
+                    check_arity (length parameters) (length args)
+                    args' <-mapM (`eval` envi) args
                     let pairs = zip parameters args'
+                    return pairs
+
+                funcs_and_lambdas :: [String] -> Expr -> Environment -> Either Error' Value
+                funcs_and_lambdas parameters body closure  = do
+                    pairs <- eval_args parameters
                     let envi' = Environment pairs closure
                     result <- eval body envi'
                     return result
 
                 constructer :: String -> [String] -> Map -> Either Error' Value
                 constructer name parameters obj_map = do
-                    check_arity (length parameters) (length args)
-                    args' <- sequence (map ((flip eval) envi) args)
-                    let obj_map' = zip parameters args'
-                    let obj_map'' = obj_map ++ obj_map'
-                    return (Object name obj_map'')
+                    pairs <- eval_args parameters
+                    let obj_map' = obj_map ++ pairs
+                    return (Object name obj_map')
 
                 getter :: String -> Either Error' Value
                 getter name = do
@@ -232,9 +257,7 @@ eval (Call pos callee args) envi = do
                 
                 native :: [String] -> (Environment -> SourcePos -> Either Error' Value) -> Environment -> Either Error' Value
                 native parameters f closure = do
-                    check_arity (length parameters) (length args)
-                    args' <- mapM ((flip eval) envi) args
-                    let pairs = zip parameters args'
+                    pairs <- eval_args parameters
                     let envi' = Environment pairs closure
                     f envi' pos
 

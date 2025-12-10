@@ -1,0 +1,45 @@
+
+data Either =
+    Left val |
+    Right val
+end
+
+bind either f = match either with
+                    case Right val -> f val
+                    else           -> either;
+
+sequence list = match list with
+    case []     -> Right []
+    case (m:ms) -> match m with
+                case Right v -> (sequence ms) >>= (\list -> Right (v:list))
+                case Left  v -> Left v
+                else         -> Left ("Please enter a list of monads for sequence")
+    else -> Left ("Please enter a list for sequence");
+
+mapM f list = sequence (map f list);
+
+--result = bind (bind (Right 5) (\val -> Right (val+1))) (\val -> Right (val * 2));
+--print val result;
+
+print (Right 5) >>= (\n -> Right (n+1));
+
+safe_div n1 n2 = if n2 == 0
+    then Left ("Cannot divide by 0")
+    else Right (n1/n2);
+
+half n = if n % 2 == 0
+    then Right (n/2)
+    else Left ("Cannot get half of odd integer");
+
+print (safe_div 20 10) >>= (\ n -> safe_div n 1) >>= (\n -> half n);
+
+monadd m1 m2 =
+    m1 >>= \ n1 ->
+    m2 >>= \ n2 ->
+    Right (n1 + n2);
+
+print monadd (Right 5) (Right 8);
+
+print sequence [Right 5, Left "error", Right (-6)];
+print sequence [Right 5, Right 12, Right (-6)];
+print sequence [Right 5, Right 12, Left "Error"];

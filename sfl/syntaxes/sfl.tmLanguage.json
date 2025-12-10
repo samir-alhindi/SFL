@@ -6,6 +6,7 @@
 		{"include": "#multi_line_comments"},
 		{"include": "#keywords"},
 		{"include": "#strings"},
+		{"include": "#characters"},
 		{"include": "#opperators"},
 		{"include": "#reserved"},
 		{"include": "#digits"},
@@ -14,7 +15,7 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.control.sfl",
-				"match": "\\b(if|then|else|let|in|print|match|with|case)\\b"
+				"match": "\\b(if|then|else|let|in|print|match|with|case|data|enum|import)\\b"
 			}]
 		},
 		"strings": {
@@ -27,6 +28,11 @@
 					"match": "\\\\."
 				}
 			]
+		},
+		"characters" : {
+			"name": "string.quoted.single",
+			"begin": "'",
+			"end": "'"
 		},
 		"opperators" : {
 			"name" : "keyword.operator",

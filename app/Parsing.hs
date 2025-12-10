@@ -13,16 +13,15 @@ program = (many1 decleration) <* eof <?> "program"
 
 decleration :: Parser Declaration
 decleration =
-    try (TL_Stmt <$> statement) <|>
-    try (TL_Function <$> function) <|>
-    try (TL_Class <$> class') <|>
-    try (TL_Enumeration <$> enum) <|>
-    try (TL_Import <$> import')
-    
+    (TL_Stmt <$> statement) <|>
+    (TL_Function <$> function) <|>
+    (TL_Class <$> class') <|>
+    (TL_Enumeration <$> enum) <|>
+    (TL_Import <$> import')
+    <?> "declaration"
+
 statement :: Parser Stmt
-statement =
-    try print'
-    <?> "statement"
+statement = print' <?> "statement"
 
 class' :: Parser Class
 class' = do
@@ -56,7 +55,6 @@ enum = do
     pos <- getPosition
     m_reservedOp "="
     enumerations <- m_identifier `sepBy1` (m_reservedOp "|")
-    _ <- m_semi
     return (Enumeration name enumerations pos)
 
 import' :: Parser Import
@@ -77,11 +75,18 @@ def :: LanguageDef ()
 def = emptyDef {
     opStart = oneOf "+-*/><=!:#%",
     opLetter = oneOf "<>=+",
-    reservedOpNames = ["+", "-", "*", "/", ">", "<", ">=", "<=", "==", "!=", "and", "or", "not", "=", "><", "\\", "->", "!", "#", ":", "%", "|", "++", ">>="],
-    reservedNames  = ["true", "false", "and", "or", "not", "if", "then", "else", "let", "in", "match", "case", "with", "data", "enum", "import"],
     commentLine = "--",
     commentStart = "{-",
-    commentEnd = "-}"
+    commentEnd = "-}",
+    reservedOpNames = [
+        "+", "-", "*", "/", ">", "<",
+        ">=", "<=", "==", "!=", "and",
+        "or","not", "=", "><", "\\", "->",
+        "!", "#", ":", "%", "|", "++", ">>="],
+    reservedNames  = [
+        "true", "false", "and", "or", "not",
+        "if", "then", "else", "let", "in", "match",
+        "case", "with", "data", "enum", "import", "end"]
 }
 
 m_naturalOrFloat :: Parser (Either Integer Double)

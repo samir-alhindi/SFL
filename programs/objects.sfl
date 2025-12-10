@@ -1,0 +1,52 @@
+
+import "lib\\std.sfl"
+
+data Shape =
+    Circle radius |
+    Rectangle width height |
+    Triangle base height;
+
+my_circle = Circle 5.5;
+my_rect   = Rectangle 10 20;
+my_tri    = Triangle 5 12;
+
+-- Automatically generated getters: 
+print radius my_circle;
+print width my_rect;
+print height my_rect;
+
+-- Automatically generated `show`
+print my_circle;
+print my_rect;
+
+-- destructors
+area shape = match shape with
+    case Circle r      -> r * r * 3.14
+    case Rectangle w h -> w * h
+    case Triangle b h  -> b * h * 0.5
+    else -> "Please enter a shape object";
+
+print area my_circle;
+print area my_rect;
+print area my_tri;
+
+my_shapes = [
+    Triangle 0.5 2,
+    Circle 6,
+    Rectangle 6 8
+];
+
+print map area my_shapes;
+
+data Person = Person name age hobby;
+
+samir = Person "Samir" 20 "Coding";
+
+print hobby samir;
+print age samir;
+
+greeting person = match person with
+    case Person name age hobby -> "Hello, My name is " ++ name ++ " I am " ++ (show age) ++ " years old."
+    else -> "Please pass in a person";
+
+print greeting samir;

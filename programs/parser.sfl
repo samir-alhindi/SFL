@@ -1,0 +1,40 @@
+
+import "lib\\std.sfl"
+
+-- a parser is just a wrapper around a function that takes a string as input and returns  
+-- Either a pair containing a result and the rest of the remaining text or an error log:
+data Parser = Parser run_parser;
+
+-- Creates a parser for a specific character:
+char c = Parser ( \ input ->
+    match input with
+        case (x:xs) -> if x == c
+                            then Right [xs, x]
+                            else Left ("Expected " ++ [c] ++ " and not " ++ [x])
+        else        -> Left "End of input"
+);
+
+s = char 's';
+print (run_parser s) "samir";
+
+-- Parses the keyword 'null':
+null_parser = Parser ( \ input ->
+    ((run_parser (char 'n')) input)      >>= \ output ->
+    ((run_parser (char 'u')) (!output))  >>= \ output2 ->
+    ((run_parser (char 'l')) (!output2)) >>= \ output3 ->
+    ((run_parser (char 'l')) (!output3)) >>= \ output4 ->
+    Right [!output4 , "null"]
+);
+
+print (run_parser null_parser) "null";
+
+-- Parses a single digit (0123..9):
+digit = Parser ( \ input -> match input with
+                                case []     -> "empty input"
+                                case (c:cs) -> if is_digit c
+                                    then Right ([cs,c])
+                                    else Left ("Expected digit and not "++[c])
+                                else -> Left "Invalid input" 
+);
+
+print (run_parser digit) "234";

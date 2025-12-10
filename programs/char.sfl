@@ -1,21 +1,15 @@
 
-import "programs\\native_functions.sfl"
+import "lib\\std.sfl"
 
-a = 'a';
-
-name = 'S' : ('a' : ('m' : ('i' : ('r' : []))));
-
-print name;
-
-print ['S', 'A', 'M'];
-
-print to_upper 's';
+print to_upper 'a';
 print map to_upper "samir";
 
-double n = n * 2;
-print map double [1, 2, 3, 4, 5];
+str_to_upper = map >< to_upper;
 
-data Number = Number n;
+print str_to_upper "rayyan";
 
-number_objects = map Number [1, 2, 3, 4, 5];
-print map n number_objects;
+print is_digit '1';
+
+is_number string = all is_digit string;
+
+print is_number "1234567890";
