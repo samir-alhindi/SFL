@@ -5,21 +5,6 @@ import RuntimeData
 import Text.Parsec
 import Data.Fixed (mod')
 
-exec_program :: [Declaration] -> [Declaration] -> Either Error' [Value]
-exec_program program' imports =
-    let global_envi = global (program' ++ imports) in
-    let statements' = statements program' in
-    mapM (`exec` global_envi) statements'
-
-    where
-        statements :: [Declaration] -> [Stmt]
-        statements [] = []
-        statements (TL_Stmt stmt:rest) = stmt : (statements rest)
-        statements (_:xs) = statements xs
-
-exec ::  Stmt -> Environment -> Either Error' Value
-exec (Print expr) envi = eval expr envi
-
 eval :: Expr -> Environment -> Either Error' Value
 eval (Ternary pos condition then_branch else_branch) envi = do
     condition' <- is_bool envi condition pos

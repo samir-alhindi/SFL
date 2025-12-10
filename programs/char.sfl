@@ -1,15 +1,5 @@
 
 import "lib\\std.sfl"
 
-print to_upper 'a';
-print map to_upper "samir";
-
 str_to_upper = map >< to_upper;
-
-print str_to_upper "rayyan";
-
-print is_digit '1';
-
 is_number string = all is_digit string;
-
-print is_number "1234567890";

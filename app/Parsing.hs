@@ -13,15 +13,11 @@ program = (many1 decleration) <* eof <?> "program"
 
 decleration :: Parser Declaration
 decleration =
-    (TL_Stmt <$> statement) <|>
     (TL_Function <$> function) <|>
     (TL_Class <$> class') <|>
     (TL_Enumeration <$> enum) <|>
     (TL_Import <$> import')
     <?> "declaration"
-
-statement :: Parser Stmt
-statement = print' <?> "statement"
 
 class' :: Parser Class
 class' = do
@@ -62,14 +58,6 @@ import' = do
     m_reserved "import"
     path <- m_stringLiteral
     return (Import path)
-
-
-print' :: Parser Stmt
-print' = do
-    m_reserved "print"
-    expre <- expression
-    _ <- m_semi
-    return (Print expre) <?> "print"
 
 def :: LanguageDef ()
 def = emptyDef {
@@ -286,5 +274,5 @@ match = do
                     ListPattern <$> (return (x, xs))
 
 
-my_parse :: String -> Either ParseError [Declaration]
-my_parse source = parse (m_whiteSpace >> program) "" source
+my_parse :: String -> String -> Either ParseError [Declaration]
+my_parse source path = parse (m_whiteSpace >> program) path source

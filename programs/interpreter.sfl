@@ -15,8 +15,10 @@ enum UnaryOpp  = Negation
 
 data Environment = Environment table outer | Global table;
 
+global = Global ([Pair "x" 5]);
+
 find name envi =
-    let p = (\ name pair -> name == !pair) in
+    let p = (\ name pair -> name == key pair) in
         match envi with
             case Global table            -> let results = (filter (p >< name) table) in
                                             if is_empty results
@@ -69,41 +71,3 @@ eval envi expre = match expre with
                                 else -> Left "Can only apply lambdas."
 
     else                    -> Left "is Inavlid expression type.";
-
-
-tests = [
-    Number 1, -- 1
-
-    Binary Plus (Number 5) (Number 6), -- 5 + 6
-    Binary Multiply (Number 10) (Number 2), -- 10 * 2
-    Binary Minus (Number 5) (Number 10), -- 5 - 10
-    Binary Divide (Number 5) (Number 2), -- 5 / 2
-
-    Unary Negation (Number 3), -- -3
-    Unary Negation (Unary Negation (Number 5)), -- --5
-
-    Binary Plus (Number 1) (Binary Multiply (Number 2) (Number 3)), -- 1 + 2 * 3
-    Unary Negation ( Binary Divide (Number 6) (Number 0)) -- -(6 / 2)
-    ];
-
-
-test_envi = Global [];
-print map (eval >< test_envi) tests;
-
-test_envi_2 = Environment [["x", 5]] test_envi;
-print eval test_envi_2 (Binary Plus (Name "x") (Number 1));
-
-test_envi_3 = Environment [["x", 10], ["x", 15]] test_envi_2;
-print eval test_envi_3 (Name "x");
-
-test_envi_4 = Environment [] (Global [["num", 18]]);
-print eval test_envi_4 (Name "num");
-
-print eval test_envi_3 (Let "x" (Number 5) (Binary Plus (Name "x") (Number 2)));
-
-lambda = Lambda ["x", "y"] (Binary Plus (Name "x") (Name "y")) test_envi;
-application = Apply lambda [Number 2, Number 3];
-print eval test_envi application;
-
-
-currey = Lambda ["x"] (Lambda ["y"] (Binary Plus (Name "x") (Name "y")) ) test_envi;

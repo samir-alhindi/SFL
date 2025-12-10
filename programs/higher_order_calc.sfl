@@ -10,11 +10,4 @@ opperations = [
 ];
 
 -- calculate :: Number -> Number -> String -> Either String Number
-calculate n1 n2 opp = (find opp opperations) >>= (\ func -> Right (func n1 n2));
-
-print calculate 1 2  "+";
-print calculate 10 3 "-";
-print calculate 3 4  "*";
-print calculate 4 4  "/";
-print calculate 1 0  "/";
-print calculate 1 2  "what";
+calc n1 n2 opp = (find opp opperations) >>= (\ func -> Right (func n1 n2));

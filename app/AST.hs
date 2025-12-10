@@ -4,13 +4,10 @@ module AST where
 import Text.Parsec
 
 data Declaration =
-    TL_Stmt Stmt
-  | TL_Function Function
-  | TL_Class Class 
-  | TL_Enumeration Enumeration
-  | TL_Import Import
-
-data Stmt = Print Expr deriving Show
+  TL_Function Function |
+  TL_Class Class |
+  TL_Enumeration Enumeration |
+  TL_Import Import
 
 data Class = Class String [Constructer] SourcePos
 
