@@ -15,19 +15,17 @@ enum UnaryOpp  = Negation
 
 data Environment = Environment table outer | Global table;
 
-global = Global ([Pair "x" 5]);
-
 find name envi =
-    let p = (\ name pair -> name == key pair) in
+    let p = (\ pair -> name == key pair) in
         match envi with
-            case Global table            -> let results = (filter (p >< name) table) in
+            case Global table            -> let results = (filter p table) in
                                             if is_empty results
-                                                then Left ("unbound name: " + name)
-                                                else Right (last (!results))
-            case Environment table outer -> let results = (filter (p >< name) table) in
+                                                then Left ("unbound name: " ++ name)
+                                                else Right (value (!results))
+            case Environment table outer -> let results = (filter p table) in
                                             if is_empty results
                                                 then find name outer
-                                                else Right (last (!results))
+                                                else Right (value (!results))
             else -> Left "Please enter an environment.";
 
 extend_envi envi pair = match envi with
@@ -43,7 +41,7 @@ eval envi expre = match expre with
                                     case Plus     -> Right (v1 + v2)
                                     case Minus    -> Right (v1 - v2)
                                     case Multiply -> Right (v1 * v2)
-                                    case Divide   -> if v2 == 0 then Left ("Cannot divide by 0") else v1 / v2
+                                    case Divide   -> if v2 == 0 then Left ("Cannot divide by 0") else Right (v1 / v2)
                                     else          -> Left "Invalid binary opperator."
     case Unary opp e        ->  (eval envi e) >>= \ v ->
                                 match opp with
@@ -53,14 +51,14 @@ eval envi expre = match expre with
     case Name s             -> find s envi
 
     case Let name e1 e2     ->  (eval envi e1) >>= \ v1 -> 
-                                let new_envi = extend_envi envi [name, v1]
+                                let new_envi = extend_envi envi (Pair name v1)
                                 in eval new_envi e2
     
-    case Lambda p b c       -> Lambda p b c
+    case Lambda p b c       -> Right (Lambda p b c)
 
     case Apply lambda args   -> match lambda with
                                 case Lambda params body closure -> if (len params) != (len args)
-                                                                    then Left ("Expected an arity of " + (len params))
+                                                                    then Left ("Expected " ++ (show (len params)) ++ " arguments but got " ++ (show (len args)))
                                                                     else (mapM (eval >< envi) args) >>= \ values ->
                                                                          let pairs = zip params values in
                                                                          let new_envi = Environment pairs closure in
@@ -70,4 +68,21 @@ eval envi expre = match expre with
 
                                 else -> Left "Can only apply lambdas."
 
-    else                    -> Left "is Inavlid expression type.";
+    else                    -> Left ((show expre) ++ " is Inavlid expression type.");
+
+envi = Global ([Pair "x" 5]);
+
+tests = map (eval >< envi) [
+    Number 5,
+    Binary Plus (Number 1) (Number 2),
+    Binary Minus (Number (-3)) (Number 0),
+    Name "x",
+    Binary Multiply (Name "x") (Name "x"),
+    Binary Divide (Number 1) (Number 0),
+    Binary Divide (Binary Divide (Number 1) (Number 0)) (Number 2),
+    Binary Divide (Binary Divide (Number 1) (Number 2)) (Number 2),
+    Unary Negation (Number 5),
+    Unary Negation (Unary Negation (Number 5)),
+    Let "x" (Number 0) (Binary Plus (Name "x") (Number 1)),
+    Apply (Lambda ["x", "y"] (Binary Plus (Name "x") (Name "y")) envi) [Number 1, Number 2]
+];

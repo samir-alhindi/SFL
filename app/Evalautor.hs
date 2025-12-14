@@ -234,7 +234,7 @@ eval (Call pos callee args) envi = do
                     object <- eval (head args) envi
                     case object of
                         Object _ obj_map -> find_atribute name obj_map
-                        _ -> Left (Error' ("getter arg must be an object and not of type: "++(type_of object)) pos)
+                        _ -> Left (Error' ("argument for the getter function '"++name++ "' must be an object and not of type: "++(type_of object)) pos)
                     where
                         find_atribute :: String -> Map -> Either Error' Value
                         find_atribute name' [] = Left (Error' ("attribute "++name'++" not found in object") pos)

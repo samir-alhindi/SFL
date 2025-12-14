@@ -11,13 +11,9 @@ my_rect   = Rectangle 10 20;
 my_tri    = Triangle 5 12;
 
 -- Automatically generated getters: 
-print radius my_circle;
-print width my_rect;
-print height my_rect;
-
--- Automatically generated `show`
-print my_circle;
-print my_rect;
+r = radius my_circle;
+w = width my_rect;
+h = height my_rect;
 
 -- destructors
 area shape = match shape with
@@ -26,9 +22,9 @@ area shape = match shape with
     case Triangle b h  -> b * h * 0.5
     else -> "Please enter a shape object";
 
-print area my_circle;
-print area my_rect;
-print area my_tri;
+a1 = area my_circle;
+a2 = area my_rect;
+a3 = area my_tri;
 
 my_shapes = [
     Triangle 0.5 2,
@@ -36,17 +32,17 @@ my_shapes = [
     Rectangle 6 8
 ];
 
-print map area my_shapes;
+areas = map area my_shapes;
 
 data Person = Person name age hobby;
 
 samir = Person "Samir" 20 "Coding";
 
-print hobby samir;
-print age samir;
+h = hobby samir;
+a = age samir;
 
 greeting person = match person with
     case Person name age hobby -> "Hello, My name is " ++ name ++ " I am " ++ (show age) ++ " years old."
     else -> "Please pass in a person";
 
-print greeting samir;
+g = greeting samir;

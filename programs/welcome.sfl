@@ -1,0 +1,152 @@
+
+
+-- Welcome to SFL (Samir's Functional Language):
+
+import "lib\\std.sfl"
+
+-- We got Functions (duh !):
+add x y = x + y;
+
+fact n = if n <= 1
+    then 1
+    else n * fact (n-1);
+
+-- Pattern matching:
+fib n = match n with
+    case 0 -> 0
+    case 1 -> 1
+    else   -> fib (n-1) + fib (n-2);
+
+-- Let bindings:
+
+let_demo = let x = 5 in
+            x + 6;
+
+in_bounds n lower upper =
+    let p = (n >= lower) in
+    let q = (n <= upper) in
+    p and q;
+
+-- Lists:
+numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+-- Head and Tail opperators:
+get_head l = !l;
+get_tail l = #l;
+
+-- Cons Opperator
+cons_demo = 1 : (2 : (3 : (4 : [])));
+
+-- Pattern match on lists:
+list_sum list = match list with
+    case []     -> 0
+    case (x:xs) -> x + sum xs
+    else        -> "Please pass in a list";
+
+-- Higher order functions:
+fib_seq = map fib numbers;
+
+-- Lambdas (anonymous functions):
+squares = map (\ n -> n * n) numbers;
+
+evens = filter (\ n -> n % 2 == 0) numbers;
+
+num_sum     = fold add 0 numbers;
+num_product = fold (\x y -> x * y) 1 numbers;
+
+-- Char datatype:
+a = 'a';
+ln = '\n';
+
+-- String:
+str = "Hello, World";
+
+-- Strings are just Lists of Chars:
+str_demo = ['h', 'i'] == "hi"; -- true
+
+-- Concatenate lists:
+joined = [1, 2, 3] ++ [4, 5];
+morning = "Good " ++ "morning"; 
+
+matrix = [[1, 2, 3], [4, 5, 6]];
+flat_list = fold (\l1 l2 -> l1 ++ l2) [] matrix;
+
+-- Native functions:
+A = to_upper 'a';
+capital = map to_upper "sfl is awesome";
+
+indeed = is_digit '1';
+digits = filter (\ c -> is_digit c) "1a2b3c";
+
+result = "1 + 1 is " ++ (show 2);
+
+-- Currying (Partial application):
+add_1 = add >< 1;
+five = add_1 4;
+
+get_odds = filter >< (\ n -> n % 2 != 0);
+odds = get_odds numbers;
+
+double_list = map >< (\ n -> n * 2);
+doubles = double_list numbers;
+
+-- Union types (Sum types):
+data Shape =
+    Circle radius |
+    Rectangle width height |
+    Triangle base height;
+
+my_circle = Circle 5.5;
+my_rect   = Rectangle 10 20;
+my_tri    = Triangle 5 12;
+
+-- Automatically generated getters: 
+r = radius my_circle;
+w = width my_rect;
+h = height my_rect;
+
+-- destructors
+area shape = match shape with
+    case Circle r      -> r * r * 3.14
+    case Rectangle w h -> w * h
+    case Triangle b h  -> b * h * 0.5
+    else -> "Please enter a shape object";
+
+data Person = Person name age;
+
+samir = Person "Samir" 20;
+
+greeting person = match person with
+    case Person name age -> "Hello, My name is " ++ name ++ " I am " ++ (show age) ++ " years old."
+    else -> "Please pass in a person";
+
+-- Curry objects:
+almost_ali = Person >< "Ali";
+
+ali = almost_ali >< 22;
+
+-- Enums:
+enum Colors = Red | Blue | Yellow
+
+show_color color = match color with
+    case Red -> "Red"
+    case Blue -> "Blue"
+    case Yellow -> "Yellow"
+    else -> "Please pass in a color";
+
+-- Monads:
+
+safe_div x y = if y == 0
+    then Left "Can't divide by 0"
+    else Right (x/y);
+
+error = safe_div 10 0;
+
+-- Bind opperator (>>=):
+
+increment_monad m = mx >>= \ x -> Right (x+1);
+
+monadd mx my =
+    mx >>= \ x ->
+    my >>= \ y ->
+    Right (x+y);

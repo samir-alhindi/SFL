@@ -85,7 +85,7 @@ split list at = [take at list, take_last at list];
 
 zip l1 l2 = if is_empty l1 or is_empty l2
                 then []
-                else [!l1, !l2] : (zip (#l1) (#l2));
+                else (Pair (!l1) (!l2)) : (zip (#l1) (#l2));
 
 concat list = if is_empty list
                 then []
